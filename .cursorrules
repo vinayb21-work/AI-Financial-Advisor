@@ -1,0 +1,63 @@
+# AI Financial Advisor Agent - Cursor Rules
+
+## Project Overview
+An AI agent for financial advisors integrating Gmail, Google Calendar, and Hubspot CRM.
+
+## Tech Stack
+- Backend: Python 3.11, FastAPI, SQLAlchemy, PostgreSQL, pgvector
+- Frontend: React 18, TypeScript, Vite, TailwindCSS
+- AI: OpenAI GPT-4, embeddings
+- Deployment: Render, Fly.io, Docker
+
+## Code Style
+
+### Python
+- Follow PEP 8
+- Use type hints
+- Async/await for all I/O operations
+- Use Pydantic for validation
+- Descriptive function names
+
+### TypeScript/React
+- Functional components with hooks
+- TypeScript strict mode
+- Use const for variables
+- Destructure props
+- TailwindCSS for styling
+
+## Naming Conventions
+- Files: snake_case.py, PascalCase.tsx
+- Functions: snake_case (Python), camelCase (TS)
+- Classes: PascalCase
+- Constants: UPPER_SNAKE_CASE
+- Components: PascalCase
+
+## Best Practices
+- Always handle errors
+- Log important operations
+- Use environment variables
+- Write descriptive comments
+- Keep functions small
+- DRY principle
+- Type everything
+
+## Database
+- Use SQLAlchemy async
+- Create models in app/models/
+- Use UUIDs for primary keys
+- Include created_at, updated_at
+
+## API
+- RESTful endpoints
+- Use Pydantic models
+- Return proper status codes
+- Include error messages
+- Use dependency injection
+
+## Security
+- Never commit secrets
+- Use environment variables
+- Validate all inputs
+- Sanitize user data
+- Use HTTPS in production
+

@@ -1,0 +1,151 @@
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+from typing import List, Dict, Any
+from datetime import datetime, timedelta
+import logging
+
+from app.models.user import User
+
+logger = logging.getLogger(__name__)
+
+class CalendarService:
+    """Google Calendar API service"""
+    
+    def __init__(self, user: User):
+        self.user = user
+        self.credentials = Credentials(
+            token=user.google_access_token,
+            refresh_token=user.google_refresh_token,
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id="",
+            client_secret=""
+        )
+        self.service = build('calendar', 'v3', credentials=self.credentials)
+    
+    async def fetch_events(self, max_results: int = 100) -> List[Dict[str, Any]]:
+        """Fetch recent calendar events"""
+        try:
+            # Get events from the past 30 days and next 90 days
+            time_min = (datetime.utcnow() - timedelta(days=30)).isoformat() + 'Z'
+            time_max = (datetime.utcnow() + timedelta(days=90)).isoformat() + 'Z'
+            
+            events_result = self.service.events().list(
+                calendarId='primary',
+                timeMin=time_min,
+                timeMax=time_max,
+                maxResults=max_results,
+                singleEvents=True,
+                orderBy='startTime'
+            ).execute()
+            
+            events = events_result.get('items', [])
+            
+            formatted_events = []
+            for event in events:
+                formatted_events.append({
+                    'id': event['id'],
+                    'summary': event.get('summary', 'Untitled'),
+                    'description': event.get('description', ''),
+                    'start': event['start'].get('dateTime', event['start'].get('date')),
+                    'end': event['end'].get('dateTime', event['end'].get('date')),
+                    'attendees': event.get('attendees', []),
+                    'location': event.get('location', ''),
+                    'status': event.get('status', '')
+                })
+            
+            return formatted_events
+            
+        except Exception as e:
+            logger.error(f"Error fetching calendar events: {e}")
+            return []
+    
+    async def get_availability(self, start_date: str, end_date: str) -> List[Dict[str, str]]:
+        """Get available time slots"""
+        try:
+            # Convert dates to datetime
+            start = datetime.fromisoformat(start_date)
+            end = datetime.fromisoformat(end_date)
+            
+            # Get busy times
+            body = {
+                "timeMin": start.isoformat() + 'Z',
+                "timeMax": end.isoformat() + 'Z',
+                "items": [{"id": "primary"}]
+            }
+            
+            freebusy = self.service.freebusy().query(body=body).execute()
+            busy_times = freebusy['calendars']['primary'].get('busy', [])
+            
+            # Generate available slots (9 AM to 5 PM, excluding busy times)
+            available_slots = []
+            current_date = start
+            
+            while current_date < end:
+                # Check each hour from 9 AM to 5 PM
+                for hour in range(9, 17):
+                    slot_start = current_date.replace(hour=hour, minute=0, second=0)
+                    slot_end = slot_start + timedelta(hours=1)
+                    
+                    # Check if slot is busy
+                    is_busy = False
+                    for busy in busy_times:
+                        busy_start = datetime.fromisoformat(busy['start'].replace('Z', '+00:00'))
+                        busy_end = datetime.fromisoformat(busy['end'].replace('Z', '+00:00'))
+                        
+                        if (slot_start < busy_end and slot_end > busy_start):
+                            is_busy = True
+                            break
+                    
+                    if not is_busy:
+                        available_slots.append({
+                            'start': slot_start.isoformat(),
+                            'end': slot_end.isoformat()
+                        })
+                
+                current_date += timedelta(days=1)
+            
+            return available_slots[:10]  # Return first 10 available slots
+            
+        except Exception as e:
+            logger.error(f"Error getting availability: {e}")
+            return []
+    
+    async def create_event(
+        self,
+        title: str,
+        start_time: str,
+        end_time: str,
+        attendees: List[str] = None,
+        description: str = ""
+    ) -> Dict[str, Any]:
+        """Create a calendar event"""
+        try:
+            event = {
+                'summary': title,
+                'description': description,
+                'start': {
+                    'dateTime': start_time,
+                    'timeZone': 'UTC',
+                },
+                'end': {
+                    'dateTime': end_time,
+                    'timeZone': 'UTC',
+                },
+            }
+            
+            if attendees:
+                event['attendees'] = [{'email': email} for email in attendees]
+            
+            created_event = self.service.events().insert(
+                calendarId='primary',
+                body=event,
+                sendUpdates='all'
+            ).execute()
+            
+            logger.info(f"Event created: {created_event['id']}")
+            return created_event
+            
+        except Exception as e:
+            logger.error(f"Error creating event: {e}")
+            raise
+
