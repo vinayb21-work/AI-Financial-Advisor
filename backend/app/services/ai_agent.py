@@ -38,7 +38,13 @@ class AIAgent:
         """Process a user message and generate response"""
         try:
             # Get relevant context from RAG
-            rag_results = await self.rag_service.search(message, limit=5)
+            # Use higher limit for "all/list" queries
+            message_lower = message.lower()
+            is_listing_query = any(word in message_lower for word in ['all', 'list', 'every', 'what clients', 'what contacts'])
+            rag_limit = 20 if is_listing_query else 5
+            
+            # Pass context to RAG for active filtering
+            rag_results = await self.rag_service.search(message, limit=rag_limit, context=context)
             rag_context = "\n\n".join([
                 f"[{doc['source']}] {doc['content']}"
                 for doc in rag_results
@@ -203,13 +209,26 @@ You have access to the following information from the user's emails, calendar, a
 
 {rag_context}
 
+⚠️ IMPORTANT: The above context is a SAMPLE of relevant documents, NOT a complete list. 
+When the user asks for "all contacts", "all clients", or "list all", you MUST use the list_all_hubspot_contacts tool to get the complete list. DO NOT rely only on the RAG context above.
+
 The user has given you the following ongoing instructions:
 {instructions if instructions else "No ongoing instructions yet."}
 
 """
         
         if context:
-            prompt += f"\nThe user has set the context to: {context}\n"
+            context_descriptions = {
+                "all meetings": "ONLY calendar events and meetings",
+                "recent emails": "ONLY emails from the last 30 days",
+                "contacts": "ONLY Hubspot contacts",
+                "upcoming events": "ONLY future calendar events",
+                "all data": "ALL available data (emails, contacts, calendar)"
+            }
+            context_desc = context_descriptions.get(context, context)
+            prompt += f"\n🎯 CONTEXT FILTER ACTIVE: The user has set context to '{context}'.\n"
+            prompt += f"The information above has been filtered to show {context_desc}.\n"
+            prompt += f"Your answers should focus on this context unless the user explicitly asks about other areas.\n"
         
         prompt += """
 CRITICAL INSTRUCTIONS - YOU MUST EXECUTE ALL TOOLS IN THE SAME RESPONSE:
@@ -261,14 +280,17 @@ For ANY action the user requests:
 Available tools you MUST use:
 - send_email: Send emails (USE THIS instead of saying you'll email)
 - create_calendar_event: Create calendar events (USE THIS to schedule meetings)
-- search_hubspot_contacts: Find contacts
+- search_hubspot_contacts: Find specific contacts by name/email
+- list_all_hubspot_contacts: List ALL contacts (USE THIS when user asks for "all clients" or "all contacts")
 - create_hubspot_contact: Create new contacts
 - add_hubspot_note: Add notes to contacts
 - get_calendar_availability: Check availability
 - create_task: Track multi-step workflows
 - save_ongoing_instruction: Remember ongoing rules
 
-REMEMBER: Execute actions immediately using tools. Don't just talk about what you'll do - DO IT.
+REMEMBER: 
+1. When user asks for "all contacts" or "list clients", call list_all_hubspot_contacts
+2. Execute actions immediately using tools. Don't just talk about what you'll do - DO IT.
 """
         
         return prompt

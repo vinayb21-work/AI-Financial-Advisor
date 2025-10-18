@@ -37,9 +37,12 @@ export default function ChatHeader({ context }: ChatHeaderProps) {
       <div className="flex items-center gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Ask Anything</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Context set to {context}
-          </p>
+          <div className="mt-1 flex items-center gap-2">
+            <span className="text-sm text-gray-500">Searching:</span>
+            <span className="inline-flex items-center rounded-md bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
+              {context}
+            </span>
+          </div>
         </div>
       </div>
 

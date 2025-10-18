@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
 from openai import AsyncOpenAI
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import json
 import logging
 
@@ -194,10 +194,10 @@ Notes: {properties.get('notes', '')}
                 logger.error(f"Error importing contact {contact.get('id')}: {e}")
                 continue
     
-    async def search(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
-        """Search for relevant documents using vector similarity"""
+    async def search(self, query: str, limit: int = 5, context: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Search for relevant documents using vector similarity with optional context filtering"""
         try:
-            logger.info(f"Searching RAG for query: {query}")
+            logger.info(f"Searching RAG for query: {query} (context: {context})")
             
             # Get query embedding
             query_embedding = await self.get_embedding(query)
@@ -205,9 +205,27 @@ Notes: {properties.get('notes', '')}
             # Convert embedding to string for pgvector
             embedding_str = "[" + ",".join(map(str, query_embedding)) + "]"
             
+            # Build context-based filter
+            context_filter = ""
+            if context == "all meetings":
+                context_filter = " AND source = 'calendar'"
+                logger.info("Filtering for calendar events only")
+            elif context == "recent emails":
+                # Filter for emails from last 30 days
+                context_filter = " AND source = 'gmail' AND created_at > NOW() - INTERVAL '30 days'"
+                logger.info("Filtering for recent emails only")
+            elif context == "contacts":
+                context_filter = " AND source = 'hubspot_contact'"
+                logger.info("Filtering for Hubspot contacts only")
+            elif context == "upcoming events":
+                # Filter for future calendar events
+                context_filter = " AND source = 'calendar' AND created_at > NOW() - INTERVAL '1 day'"
+                logger.info("Filtering for upcoming events only")
+            # 'all data' or None = no filter
+            
             # Perform vector similarity search
             # Use SQLAlchemy text() with bindparams for proper parameter handling
-            sql = text("""
+            sql = text(f"""
                 SELECT 
                     id, 
                     source, 
@@ -218,7 +236,7 @@ Notes: {properties.get('notes', '')}
                     doc_metadata,
                     embedding <=> CAST(:query_embedding AS vector) AS distance
                 FROM documents
-                WHERE user_id = :user_id
+                WHERE user_id = :user_id{context_filter}
                 ORDER BY embedding <=> CAST(:query_embedding AS vector)
                 LIMIT :result_limit
             """).bindparams(

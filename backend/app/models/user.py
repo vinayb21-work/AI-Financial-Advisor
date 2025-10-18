@@ -30,6 +30,7 @@ class User(Base):
     last_gmail_sync = Column(DateTime)
     last_calendar_sync = Column(DateTime)
     last_hubspot_sync = Column(DateTime)
+    last_gmail_check = Column(DateTime)  # For polling new emails
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)

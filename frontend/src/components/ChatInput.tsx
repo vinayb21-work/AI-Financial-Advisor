@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Send, Plus, Mic, ChevronDown } from 'lucide-react'
+import { Send, Plus, Mic, ChevronDown, Calendar, Mail, Users, Clock, Database } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface ChatInputProps {
@@ -27,11 +27,11 @@ export default function ChatInput({
   }
 
   const contexts = [
-    'all meetings',
-    'recent emails',
-    'contacts',
-    'upcoming events',
-    'all data',
+    { value: 'all meetings', icon: Calendar, description: 'Search calendar events' },
+    { value: 'recent emails', icon: Mail, description: 'Search last 30 days of emails' },
+    { value: 'contacts', icon: Users, description: 'Search Hubspot contacts' },
+    { value: 'upcoming events', icon: Clock, description: 'Search future calendar events' },
+    { value: 'all data', icon: Database, description: 'Search everything' },
   ]
 
   return (
@@ -72,29 +72,49 @@ export default function ChatInput({
                   type="button"
                   onClick={() => setShowContextMenu(!showContextMenu)}
                   className="flex h-8 items-center gap-1.5 rounded-lg border border-gray-300 px-3 text-xs font-medium text-gray-600 transition hover:bg-gray-50"
+                  title="Change search context"
                 >
+                  {(() => {
+                    const currentContext = contexts.find(c => c.value === context)
+                    const ContextIcon = currentContext?.icon || Database
+                    return <ContextIcon className="h-3.5 w-3.5" />
+                  })()}
                   {context}
                   <ChevronDown className="h-3.5 w-3.5" />
                 </button>
 
                 {showContextMenu && (
-                  <div className="absolute bottom-full left-0 mb-2 w-48 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
-                    {contexts.map((ctx) => (
-                      <button
-                        key={ctx}
-                        type="button"
-                        onClick={() => {
-                          onContextChange(ctx)
-                          setShowContextMenu(false)
-                        }}
-                        className={cn(
-                          'w-full px-4 py-2 text-left text-sm transition hover:bg-gray-50',
-                          ctx === context && 'bg-gray-100 text-gray-900 font-medium'
-                        )}
-                      >
-                        {ctx}
-                      </button>
-                    ))}
+                  <div className="absolute bottom-full left-0 mb-2 w-64 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
+                    {contexts.map((ctx) => {
+                      const Icon = ctx.icon
+                      return (
+                        <button
+                          key={ctx.value}
+                          type="button"
+                          onClick={() => {
+                            onContextChange(ctx.value)
+                            setShowContextMenu(false)
+                          }}
+                          className={cn(
+                            'w-full px-4 py-2.5 text-left transition hover:bg-gray-50 flex items-start gap-3',
+                            ctx.value === context && 'bg-gray-100 text-gray-900'
+                          )}
+                        >
+                          <Icon className="h-4 w-4 mt-0.5 flex-shrink-0 text-gray-500" />
+                          <div className="flex-1 min-w-0">
+                            <div className={cn(
+                              'text-sm font-medium',
+                              ctx.value === context && 'text-gray-900'
+                            )}>
+                              {ctx.value}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-0.5">
+                              {ctx.description}
+                            </div>
+                          </div>
+                        </button>
+                      )
+                    })}
                   </div>
                 )}
               </div>

@@ -19,7 +19,7 @@ All 6 critical features from TEST_DATA_PLAN.md are now complete:
 
 **Test Send Email:**
 ```
-You: "Send an email to test@example.com with subject 'Test' saying Hello"
+You: "Send an email to vinay.badhan21@gmail.com with subject 'Test' saying Hello"
 ```
 **Expected:** Agent uses `send_email` tool and reports success
 

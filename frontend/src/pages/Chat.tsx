@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { chatApi } from '@/lib/api'
 import ChatHeader from '@/components/ChatHeader'
@@ -34,6 +34,16 @@ export default function Chat() {
     },
     enabled: !!currentThreadId,
   })
+
+  // Restore context when switching threads
+  useEffect(() => {
+    if (currentThread?.context) {
+      setContext(currentThread.context)
+    } else if (!currentThreadId) {
+      // Reset to default for new threads
+      setContext('all meetings')
+    }
+  }, [currentThread?.context, currentThreadId])
 
   // Send message mutation
   const sendMessageMutation = useMutation({

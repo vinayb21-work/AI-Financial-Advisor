@@ -60,6 +60,11 @@ async def send_message(
             thread = result.scalar_one_or_none()
             if not thread:
                 raise HTTPException(status_code=404, detail="Thread not found")
+            
+            # Update thread context if it changed
+            if message_data.context and thread.context != message_data.context:
+                thread.context = message_data.context
+                await db.commit()
         else:
             # Create new thread
             thread = Thread(

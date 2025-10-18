@@ -7,6 +7,7 @@ import logging
 from app.core.config import settings
 from app.core.database import engine, get_db, init_db
 from app.api import auth, chat, integrations, webhooks
+from app.services.gmail_poller import start_gmail_poller, stop_gmail_poller
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -39,6 +40,17 @@ async def startup_event():
     logger.info("Starting up application...")
     await init_db()
     logger.info("Database initialized")
+    
+    # Start Gmail poller for proactive agent
+    start_gmail_poller()
+    logger.info("Gmail poller started")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup on shutdown"""
+    logger.info("Shutting down application...")
+    stop_gmail_poller()
+    logger.info("Gmail poller stopped")
 
 @app.get("/")
 async def root():

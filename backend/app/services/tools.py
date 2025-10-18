@@ -147,6 +147,23 @@ class ToolExecutor:
             {
                 "type": "function",
                 "function": {
+                    "name": "list_all_hubspot_contacts",
+                    "description": "List ALL contacts in Hubspot CRM. Use this when user asks for 'all clients', 'all contacts', or 'what clients are in hubspot'. Returns complete list of all contacts.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "limit": {
+                                "type": "integer",
+                                "description": "Maximum number of contacts to return",
+                                "default": 100
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
                     "name": "create_hubspot_contact",
                     "description": "Create a new contact in Hubspot CRM",
                     "parameters": {
@@ -260,6 +277,8 @@ class ToolExecutor:
                 return await self._create_calendar_event(args)
             elif function_name == "search_hubspot_contacts":
                 return await self._search_hubspot_contacts(args)
+            elif function_name == "list_all_hubspot_contacts":
+                return await self._list_all_hubspot_contacts(args)
             elif function_name == "create_hubspot_contact":
                 return await self._create_hubspot_contact(args)
             elif function_name == "add_hubspot_note":
@@ -320,6 +339,16 @@ class ToolExecutor:
         """Search Hubspot contacts"""
         contacts = await self.hubspot_service.search_contacts(args["query"])
         return {"contacts": contacts}
+    
+    async def _list_all_hubspot_contacts(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """List all Hubspot contacts"""
+        limit = args.get("limit", 100)
+        contacts = await self.hubspot_service.fetch_contacts(limit=limit)
+        return {
+            "contacts": contacts,
+            "total": len(contacts),
+            "message": f"Found {len(contacts)} total contacts in Hubspot"
+        }
     
     async def _create_hubspot_contact(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """Create Hubspot contact"""

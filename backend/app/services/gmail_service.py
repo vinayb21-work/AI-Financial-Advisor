@@ -105,6 +105,69 @@ class GmailService:
             logger.error(f"Error sending email: {e}")
             raise
     
+    async def fetch_emails_since(self, since_datetime: datetime, max_results: int = 50) -> List[Dict[str, Any]]:
+        """Fetch emails received since a specific datetime"""
+        try:
+            # Convert datetime to Gmail query format (YYYY/MM/DD)
+            date_str = since_datetime.strftime('%Y/%m/%d')
+            query = f"after:{date_str}"
+            
+            logger.info(f"Fetching emails since {since_datetime} (query: {query})")
+            
+            # Get list of messages
+            results = self.service.users().messages().list(
+                userId='me',
+                q=query,
+                maxResults=max_results
+            ).execute()
+            
+            messages = results.get('messages', [])
+            
+            emails = []
+            for message in messages:
+                # Get full message details
+                msg = self.service.users().messages().get(
+                    userId='me',
+                    id=message['id'],
+                    format='full'
+                ).execute()
+                
+                # Get internal date (milliseconds since epoch)
+                internal_date = int(msg['internalDate']) / 1000
+                email_datetime = datetime.fromtimestamp(internal_date)
+                
+                # Skip if email is older than since_datetime
+                if email_datetime <= since_datetime:
+                    continue
+                
+                # Extract headers
+                headers = msg['payload'].get('headers', [])
+                subject = next((h['value'] for h in headers if h['name'] == 'Subject'), 'No subject')
+                from_email = next((h['value'] for h in headers if h['name'] == 'From'), 'Unknown')
+                to_email = next((h['value'] for h in headers if h['name'] == 'To'), 'Unknown')
+                date = next((h['value'] for h in headers if h['name'] == 'Date'), '')
+                
+                # Extract body
+                body = self._get_email_body(msg['payload'])
+                
+                emails.append({
+                    'id': msg['id'],
+                    'subject': subject,
+                    'from': from_email,
+                    'to': to_email,
+                    'date': date,
+                    'body': body,
+                    'snippet': msg.get('snippet', ''),
+                    'internal_date': email_datetime.isoformat()
+                })
+            
+            logger.info(f"Found {len(emails)} new emails since {since_datetime}")
+            return emails
+            
+        except Exception as e:
+            logger.error(f"Error fetching emails since timestamp: {e}")
+            return []
+    
     async def search_emails(self, query: str, max_results: int = 10) -> List[Dict[str, Any]]:
         """Search emails with a query"""
         try:
