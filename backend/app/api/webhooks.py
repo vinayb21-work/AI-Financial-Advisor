@@ -185,12 +185,27 @@ async def process_hubspot_webhook(data: dict):
                     rag_service = RAGService(db, user)
                     await rag_service.import_hubspot_contacts(contacts)
                     
+                    # Trigger proactive agent for hubspot contacts
+                    proactive_service = ProactiveAgentService(db, user)
+                    for contact in contacts:
+                        try:
+                            event_data = {
+                                'id': contact.get('id'),
+                                'email': contact.get('properties', {}).get('email', ''),
+                                'firstname': contact.get('properties', {}).get('firstname', ''),
+                                'lastname': contact.get('properties', {}).get('lastname', '')
+                            }
+                            await proactive_service.process_event('hubspot', event_data)
+                        except Exception as e:
+                            logger.error(f"Error processing proactive action for hubspot contact: {e}")
+                            continue
+
                     # Update user sync timestamp
                     from datetime import datetime
                     user.last_hubspot_sync = datetime.utcnow()
                     await db.commit()
-                    
-                    logger.info(f"Hubspot sync completed for user {user.id}")
+
+                    logger.info(f"Hubspot sync completed for user {user.id} - processed {len(contacts)} contacts")
             
         except Exception as e:
             logger.error(f"Error in Hubspot webhook processing: {e}")
