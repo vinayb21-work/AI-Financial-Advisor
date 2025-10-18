@@ -7,6 +7,7 @@ from app.services.gmail_service import GmailService
 from app.services.calendar_service import CalendarService
 from app.services.hubspot_service import HubspotService
 from app.services.rag_service import RAGService
+from app.services.webhook_manager import WebhookManager
 
 router = APIRouter()
 
@@ -191,4 +192,32 @@ async def get_sync_status(
             "last_sync": current_user.last_hubspot_sync.isoformat() if current_user.last_hubspot_sync else None
         }
     }
+
+@router.post("/webhooks/setup")
+async def setup_webhooks(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Set up webhooks for all connected services"""
+    webhook_manager = WebhookManager(db, current_user)
+    
+    results = {}
+    
+    # Setup Calendar webhook (most reliable)
+    if current_user.google_access_token:
+        calendar_result = await webhook_manager.setup_calendar_webhook()
+        results['calendar'] = calendar_result
+    
+    # Setup Hubspot webhook
+    if current_user.hubspot_access_token:
+        hubspot_result = await webhook_manager.setup_hubspot_webhook()
+        results['hubspot'] = hubspot_result
+    
+    # Gmail requires Pub/Sub setup (more complex)
+    results['gmail'] = {
+        "status": "not_implemented",
+        "message": "Gmail webhooks require Google Cloud Pub/Sub setup"
+    }
+    
+    return results
 

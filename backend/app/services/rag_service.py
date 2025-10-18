@@ -90,6 +90,7 @@ Date: {email.get('date', '')}
     
     async def import_calendar_events(self, events: List[Dict[str, Any]]):
         """Import calendar events into vector database"""
+        logger.info(f"Importing {len(events)} calendar events")
         for event in events:
             try:
                 # Create document content
@@ -100,6 +101,8 @@ Date: {event.get('start', '')} to {event.get('end', '')}
 Attendees: {attendees}
 Description: {event.get('description', '')}
                 """.strip()
+                
+                logger.info(f"Importing event: {event.get('summary')} on {event.get('start')}")
                 
                 # Get embedding
                 embedding = await self.get_embedding(content)
@@ -194,13 +197,16 @@ Notes: {properties.get('notes', '')}
     async def search(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
         """Search for relevant documents using vector similarity"""
         try:
+            logger.info(f"Searching RAG for query: {query}")
+            
             # Get query embedding
             query_embedding = await self.get_embedding(query)
             
             # Convert embedding to string for pgvector
             embedding_str = "[" + ",".join(map(str, query_embedding)) + "]"
             
-            # Perform vector similarity search using positional parameters
+            # Perform vector similarity search
+            # Use SQLAlchemy text() with bindparams for proper parameter handling
             sql = text("""
                 SELECT 
                     id, 
@@ -210,21 +216,21 @@ Notes: {properties.get('notes', '')}
                     content, 
                     title, 
                     doc_metadata,
-                    embedding <=> $1::vector AS distance
+                    embedding <=> CAST(:query_embedding AS vector) AS distance
                 FROM documents
-                WHERE user_id = $2
-                ORDER BY embedding <=> $1::vector
-                LIMIT $3
-            """)
-            
-            result = await self.db.execute(
-                sql,
-                [embedding_str, self.user.id, limit]
+                WHERE user_id = :user_id
+                ORDER BY embedding <=> CAST(:query_embedding AS vector)
+                LIMIT :result_limit
+            """).bindparams(
+                query_embedding=embedding_str,
+                user_id=self.user.id,
+                result_limit=limit
             )
             
+            result = await self.db.execute(sql)
             rows = result.fetchall()
             
-            return [
+            results = [
                 {
                     "id": str(row[0]),
                     "source": row[1],
@@ -237,6 +243,10 @@ Notes: {properties.get('notes', '')}
                 }
                 for row in rows
             ]
+            
+            logger.info(f"Found {len(results)} documents. Top result: {results[0]['title'] if results else 'None'}")
+            
+            return results
             
         except Exception as e:
             logger.error(f"Error searching documents: {e}")

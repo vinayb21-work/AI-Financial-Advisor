@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str
     GOOGLE_CLIENT_SECRET: str
     GOOGLE_REDIRECT_URI: str
+    GOOGLE_PROJECT_ID: Optional[str] = None  # For Pub/Sub (optional)
     
     # Hubspot OAuth
     HUBSPOT_CLIENT_ID: str

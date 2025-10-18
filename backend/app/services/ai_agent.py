@@ -191,7 +191,13 @@ class AIAgent:
         context: Optional[str] = None
     ) -> str:
         """Build system prompt with context"""
+        from datetime import datetime
+        current_date = datetime.now().strftime("%B %d, %Y")
+        current_time = datetime.now().strftime("%I:%M %p")
+        
         prompt = f"""You are an AI assistant for financial advisors. You help manage emails, calendar events, and Hubspot CRM contacts.
+
+CURRENT DATE AND TIME: {current_date} at {current_time}
 
 You have access to the following information from the user's emails, calendar, and Hubspot:
 

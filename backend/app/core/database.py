@@ -47,6 +47,7 @@ async def init_db():
         from app.models.task import Task
         from app.models.instruction import OngoingInstruction
         from app.models.document import Document
+        from app.models.webhook_subscription import WebhookSubscription
         
         async with engine.begin() as conn:
             # Enable pgvector extension
