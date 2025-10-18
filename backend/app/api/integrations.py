@@ -3,13 +3,34 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.api.dependencies import get_current_user
 from app.models.user import User
+from app.models.instruction import OngoingInstruction
+from app.models.task import Task, TaskStatus
 from app.services.gmail_service import GmailService
 from app.services.calendar_service import CalendarService
 from app.services.hubspot_service import HubspotService
 from app.services.rag_service import RAGService
 from app.services.webhook_manager import WebhookManager
+from sqlalchemy import select
+from pydantic import BaseModel
+from typing import Optional
+from datetime import datetime
 
 router = APIRouter()
+
+def format_datetime(dt: datetime) -> str:
+    """Format datetime as ISO string with UTC indicator"""
+    if dt is None:
+        return None
+    return dt.isoformat() + 'Z' if not dt.tzinfo else dt.isoformat()
+
+# Request models
+class InstructionCreate(BaseModel):
+    instruction: str
+    trigger_type: str  # 'gmail', 'calendar', 'hubspot'
+
+class TaskUpdate(BaseModel):
+    status: Optional[str] = None
+    context: Optional[dict] = None
 
 @router.post("/sync/gmail")
 async def sync_gmail(
@@ -156,7 +177,7 @@ async def sync_hubspot_background(user_id: str):
                 logger.error(f"User {user_id} not found")
                 return
             
-            hubspot_service = HubspotService(user)
+            hubspot_service = HubspotService(user, db)
             contacts = await hubspot_service.fetch_contacts()
             
             rag_service = RAGService(db, user)
@@ -220,4 +241,151 @@ async def setup_webhooks(
     }
     
     return results
+
+# Ongoing Instructions Management
+@router.get("/instructions")
+async def get_instructions(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get all ongoing instructions"""
+    result = await db.execute(
+        select(OngoingInstruction).where(
+            OngoingInstruction.user_id == current_user.id
+        ).order_by(OngoingInstruction.created_at.desc())
+    )
+    instructions = result.scalars().all()
+    
+    return {
+        "instructions": [
+            {
+                "id": str(inst.id),
+                "instruction": inst.instruction,
+                "trigger_type": inst.trigger_type,
+                "active": inst.active,
+                "created_at": format_datetime(inst.created_at)
+            }
+            for inst in instructions
+        ]
+    }
+
+@router.post("/instructions")
+async def create_instruction(
+    instruction_data: InstructionCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Create a new ongoing instruction"""
+    instruction = OngoingInstruction(
+        user_id=current_user.id,
+        instruction=instruction_data.instruction,
+        trigger_type=instruction_data.trigger_type,
+        active=True
+    )
+    db.add(instruction)
+    await db.commit()
+    await db.refresh(instruction)
+    
+    return {
+        "id": str(instruction.id),
+        "instruction": instruction.instruction,
+        "trigger_type": instruction.trigger_type,
+        "active": instruction.active
+    }
+
+@router.delete("/instructions/{instruction_id}")
+async def delete_instruction(
+    instruction_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Delete an ongoing instruction"""
+    from uuid import UUID
+    
+    result = await db.execute(
+        select(OngoingInstruction).where(
+            OngoingInstruction.id == UUID(instruction_id),
+            OngoingInstruction.user_id == current_user.id
+        )
+    )
+    instruction = result.scalar_one_or_none()
+    
+    if not instruction:
+        raise HTTPException(status_code=404, detail="Instruction not found")
+    
+    await db.delete(instruction)
+    await db.commit()
+    
+    return {"message": "Instruction deleted"}
+
+# Task Management
+@router.get("/tasks")
+async def get_tasks(
+    status: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get all tasks"""
+    query = select(Task).where(Task.user_id == current_user.id)
+    
+    if status:
+        query = query.where(Task.status == TaskStatus(status.upper()))
+    
+    query = query.order_by(Task.created_at.desc())
+    
+    result = await db.execute(query)
+    tasks = result.scalars().all()
+    
+    return {
+        "tasks": [
+            {
+                "id": str(task.id),
+                "description": task.description,
+                "status": task.status.value,
+                "waiting_for": task.waiting_for,
+                "context": task.context,
+                "created_at": format_datetime(task.created_at),
+                "updated_at": format_datetime(task.updated_at) if task.updated_at else None
+            }
+            for task in tasks
+        ]
+    }
+
+@router.patch("/tasks/{task_id}")
+async def update_task(
+    task_id: str,
+    task_data: TaskUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Update a task"""
+    from uuid import UUID
+    from datetime import datetime
+    
+    result = await db.execute(
+        select(Task).where(
+            Task.id == UUID(task_id),
+            Task.user_id == current_user.id
+        )
+    )
+    task = result.scalar_one_or_none()
+    
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    if task_data.status:
+        task.status = TaskStatus(task_data.status.upper())
+    if task_data.context is not None:
+        task.context = task_data.context
+    
+    task.updated_at = datetime.utcnow()
+    await db.commit()
+    await db.refresh(task)
+    
+    return {
+        "id": str(task.id),
+        "description": task.description,
+        "status": task.status.value,
+        "context": task.context
+    }
 

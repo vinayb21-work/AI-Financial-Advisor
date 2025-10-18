@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { chatApi, integrationApi } from '@/lib/api'
+import { chatApi } from '@/lib/api'
 import ChatHeader from '@/components/ChatHeader'
 import ChatSidebar from '@/components/ChatSidebar'
 import ChatMessages from '@/components/ChatMessages'
@@ -12,6 +12,7 @@ export default function Chat() {
   const { user } = useAuthStore()
   const [currentThreadId, setCurrentThreadId] = useState<string | null>(null)
   const [context, setContext] = useState<string>('all meetings')
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const queryClient = useQueryClient()
 
   // Fetch threads
@@ -80,10 +81,15 @@ export default function Chat() {
         currentThreadId={currentThreadId}
         onSelectThread={setCurrentThreadId}
         onNewThread={handleNewThread}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
 
       <div className="flex flex-1 flex-col">
-        <ChatHeader context={context} onContextChange={setContext} />
+        <ChatHeader 
+          context={context} 
+          onContextChange={setContext}
+        />
 
         <ChatMessages
           messages={currentThread?.messages || []}

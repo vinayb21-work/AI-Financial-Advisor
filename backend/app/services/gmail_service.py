@@ -7,6 +7,7 @@ import logging
 from datetime import datetime
 
 from app.models.user import User
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -19,8 +20,8 @@ class GmailService:
             token=user.google_access_token,
             refresh_token=user.google_refresh_token,
             token_uri="https://oauth2.googleapis.com/token",
-            client_id="",  # Will be set from settings
-            client_secret=""
+            client_id=settings.GOOGLE_CLIENT_ID,
+            client_secret=settings.GOOGLE_CLIENT_SECRET
         )
         self.service = build('gmail', 'v1', credentials=self.credentials)
     

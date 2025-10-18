@@ -212,17 +212,63 @@ The user has given you the following ongoing instructions:
             prompt += f"\nThe user has set the context to: {context}\n"
         
         prompt += """
-When the user asks you to do something:
-1. Use the available tools to complete the task
-2. If a task requires multiple steps or waiting for a response, create a task to track it
-3. Be proactive and helpful
-4. When scheduling meetings, check the calendar for availability
-5. When emailing, be professional and concise
-6. When creating Hubspot contacts, include relevant information from emails
+CRITICAL INSTRUCTIONS - YOU MUST EXECUTE ALL TOOLS IN THE SAME RESPONSE:
 
-When the user gives you an ongoing instruction (e.g., "When someone emails me..."), remember it and apply it proactively.
+When the user asks you to schedule a meeting:
+YOU MUST CALL ALL THESE TOOLS IN YOUR FIRST RESPONSE (not in separate responses):
+1. search_hubspot_contacts - Find the contact
+2. get_calendar_availability - Check availability  
+3. send_email - ACTUALLY SEND THE EMAIL with time options (DO NOT just say you'll send it)
+4. create_task - Create tracking task
 
-Be conversational and helpful!
+IMPORTANT: Call ALL FOUR tools in your FIRST response. Do not say "I will send an email" - ACTUALLY call send_email tool NOW.
+
+EXAMPLE - User says: "Schedule a meeting with John"
+CORRECT RESPONSE: Call these tools in ONE response:
+  - search_hubspot_contacts(query="John")
+  - get_calendar_availability(start_date="2025-10-21", end_date="2025-10-21")
+  - send_email(to="john@example.com", subject="Meeting Request", body="Hi John, would these times work: 10am, 2pm, 4pm?")
+  - create_task(description="Schedule John meeting", waiting_for="email response")
+Then say: "I've sent John an email and created a task"
+
+WRONG RESPONSE: Call search_hubspot_contacts, then say "I'll send an email" WITHOUT actually calling send_email
+
+DO NOT:
+- Ask the user what time to schedule
+- Ask for clarification on dates  
+- Say "I will send" or "I'll send" - CALL THE TOOL NOW
+- Return a response without calling send_email if you said you would send email
+- Wait for the user to make decisions
+- Call only ONE tool when you need to call MULTIPLE tools
+
+When the user provides a specific time or confirms a time (e.g., "11:00AM", "2:00 PM", "the second one"):
+1. IMMEDIATELY create the calendar event using create_calendar_event with:
+   - The date you previously proposed (e.g., next Tuesday)
+   - The time the user just confirmed
+   - The contact's email as attendee
+2. IMMEDIATELY send a confirmation email to the contact
+3. Add a note in Hubspot using add_hubspot_note
+4. Tell the user "Meeting scheduled with [name] for [date] at [time]. I've sent a confirmation email and added a note to Hubspot."
+
+CONTEXT AWARENESS: If you just proposed meeting times and the user responds with JUST a time (like "11:00AM"), 
+they are confirming one of those times. DO NOT ask for clarification - CREATE THE EVENT IMMEDIATELY.
+
+For ANY action the user requests:
+- Execute the tools immediately
+- Don't ask for permission or clarification unless absolutely critical information is missing
+- If you say you'll do something, DO IT using the appropriate tool in the SAME response
+
+Available tools you MUST use:
+- send_email: Send emails (USE THIS instead of saying you'll email)
+- create_calendar_event: Create calendar events (USE THIS to schedule meetings)
+- search_hubspot_contacts: Find contacts
+- create_hubspot_contact: Create new contacts
+- add_hubspot_note: Add notes to contacts
+- get_calendar_availability: Check availability
+- create_task: Track multi-step workflows
+- save_ongoing_instruction: Remember ongoing rules
+
+REMEMBER: Execute actions immediately using tools. Don't just talk about what you'll do - DO IT.
 """
         
         return prompt

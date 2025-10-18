@@ -8,6 +8,7 @@ from app.services.rag_service import RAGService
 from app.services.gmail_service import GmailService
 from app.services.calendar_service import CalendarService
 from app.services.hubspot_service import HubspotService
+from app.services.proactive_agent_service import ProactiveAgentService
 import logging
 import uuid
 
@@ -123,6 +124,17 @@ async def process_calendar_webhook(channel_id: str, resource_id: str):
             
             logger.info(f"Calendar sync completed for user {user.id}")
             
+            # Trigger proactive agent to check if action needed
+            proactive_service = ProactiveAgentService(db, user)
+            for event in events:
+                event_data = {
+                    'summary': event.get('summary', ''),
+                    'start': event.get('start', ''),
+                    'end': event.get('end', ''),
+                    'attendees': event.get('attendees', [])
+                }
+                await proactive_service.process_event('calendar', event_data)
+            
         except Exception as e:
             logger.error(f"Error in Calendar webhook processing: {e}")
             await db.rollback()
@@ -166,7 +178,7 @@ async def process_hubspot_webhook(data: dict):
                     logger.info(f"Syncing Hubspot for user {user.id} due to webhook")
                     
                     # Fetch updated contacts
-                    hubspot_service = HubspotService(user)
+                    hubspot_service = HubspotService(user, db)
                     contacts = await hubspot_service.fetch_contacts()
                     
                     # Update RAG database

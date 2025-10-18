@@ -20,7 +20,7 @@ class ToolExecutor:
         self.user = user
         self.gmail_service = GmailService(user)
         self.calendar_service = CalendarService(user)
-        self.hubspot_service = HubspotService(user)
+        self.hubspot_service = HubspotService(user, db)
     
     def get_tools_definition(self) -> List[Dict[str, Any]]:
         """Get OpenAI function calling tools definition"""
@@ -276,12 +276,18 @@ class ToolExecutor:
     
     async def _send_email(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """Send an email"""
+        logger.info(f"[SEND_EMAIL] Attempting to send email to: {args.get('to')}")
+        logger.info(f"[SEND_EMAIL] Subject: {args.get('subject')}")
+        logger.info(f"[SEND_EMAIL] Body preview: {args.get('body', '')[:100]}...")
+        
         result = await self.gmail_service.send_email(
             to=args["to"],
             subject=args["subject"],
             body=args["body"]
         )
-        return {"status": "sent", "message_id": result}
+        
+        logger.info(f"[SEND_EMAIL] ✅ SUCCESS - Email sent to {args['to']}, message_id: {result}")
+        return {"status": "sent", "message_id": result, "sent_to": args["to"]}
     
     async def _search_emails(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """Search emails"""

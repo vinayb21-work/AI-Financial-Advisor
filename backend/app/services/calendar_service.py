@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import logging
 
 from app.models.user import User
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +18,8 @@ class CalendarService:
             token=user.google_access_token,
             refresh_token=user.google_refresh_token,
             token_uri="https://oauth2.googleapis.com/token",
-            client_id="",
-            client_secret=""
+            client_id=settings.GOOGLE_CLIENT_ID,
+            client_secret=settings.GOOGLE_CLIENT_SECRET
         )
         self.service = build('calendar', 'v3', credentials=self.credentials)
     
@@ -63,8 +64,24 @@ class CalendarService:
         """Get available time slots"""
         try:
             # Convert dates to datetime
-            start = datetime.fromisoformat(start_date)
-            end = datetime.fromisoformat(end_date)
+            # Handle both date-only (YYYY-MM-DD) and full datetime strings
+            if 'T' not in start_date:
+                # Date only - set to start of day
+                start = datetime.fromisoformat(start_date).replace(hour=0, minute=0, second=0)
+            else:
+                start = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+            
+            if 'T' not in end_date:
+                # Date only - set to end of day (next day at midnight)
+                end = datetime.fromisoformat(end_date).replace(hour=23, minute=59, second=59)
+            else:
+                end = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+            
+            # Ensure end is after start
+            if end <= start:
+                end = start + timedelta(days=1)
+            
+            logger.info(f"Checking availability from {start.isoformat()} to {end.isoformat()}")
             
             # Get busy times
             body = {

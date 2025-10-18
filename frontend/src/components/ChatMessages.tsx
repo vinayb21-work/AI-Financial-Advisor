@@ -23,12 +23,53 @@ export default function ChatMessages({ messages, loading }: ChatMessagesProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
+  // Format conversation start time
+  const formatConversationTime = (timestamp: string) => {
+    const date = new Date(timestamp)
+    const today = new Date()
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+
+    // Set time to midnight for accurate day comparison
+    const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+    const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    const yesterdayOnly = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate())
+
+    if (dateOnly.getTime() === todayOnly.getTime()) {
+      return `Today at ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`
+    } else if (dateOnly.getTime() === yesterdayOnly.getTime()) {
+      return `Yesterday at ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`
+    } else {
+      const options: Intl.DateTimeFormatOptions = { 
+        month: 'short', 
+        day: 'numeric',
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true
+      }
+      // Only add year if not current year
+      if (date.getFullYear() !== today.getFullYear()) {
+        options.year = 'numeric'
+      }
+      return date.toLocaleDateString('en-US', options)
+    }
+  }
+
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <div className="mx-auto max-w-3xl space-y-6">
+        {/* Show conversation start time */}
+        {messages.length > 0 && (
+          <div className="flex justify-center">
+            <div className="rounded-full bg-gray-100 px-4 py-1.5 text-xs font-medium text-gray-600">
+              {formatConversationTime(messages[0].created_at)}
+            </div>
+          </div>
+        )}
+
         {messages.length === 0 && !loading && (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <Bot className="h-16 w-16 text-blue-500" />
+            <Bot className="h-16 w-16 text-gray-400" />
             <h2 className="mt-4 text-xl font-semibold text-gray-900">
               I can answer questions about any Jump meeting.
             </h2>
@@ -47,8 +88,8 @@ export default function ChatMessages({ messages, loading }: ChatMessagesProps) {
             )}
           >
             {message.role === 'assistant' && (
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-100">
-                <Bot className="h-5 w-5 text-blue-600" />
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-100">
+                <Bot className="h-5 w-5 text-gray-600" />
               </div>
             )}
 
@@ -96,11 +137,11 @@ export default function ChatMessages({ messages, loading }: ChatMessagesProps) {
 
         {loading && (
           <div className="flex gap-4">
-            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-100">
-              <Bot className="h-5 w-5 text-blue-600" />
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-100">
+              <Bot className="h-5 w-5 text-gray-600" />
             </div>
             <div className="rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-gray-200">
-              <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+              <Loader2 className="h-5 w-5 animate-spin text-gray-600" />
             </div>
           </div>
         )}

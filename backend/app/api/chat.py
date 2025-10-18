@@ -4,6 +4,7 @@ from sqlalchemy import select, desc
 from pydantic import BaseModel
 from typing import List, Optional
 from uuid import UUID
+from datetime import datetime
 
 from app.core.database import get_db
 from app.api.dependencies import get_current_user
@@ -12,6 +13,12 @@ from app.models.message import Message, Thread, MessageRole
 from app.services.ai_agent import AIAgent
 
 router = APIRouter()
+
+def format_datetime(dt: datetime) -> str:
+    """Format datetime as ISO string with UTC indicator"""
+    if dt is None:
+        return None
+    return dt.isoformat() + 'Z' if not dt.tzinfo else dt.isoformat()
 
 class MessageCreate(BaseModel):
     content: str
@@ -102,7 +109,7 @@ async def send_message(
                 "id": str(user_message.id),
                 "role": user_message.role.value,
                 "content": user_message.content,
-                "created_at": user_message.created_at.isoformat()
+                "created_at": format_datetime(user_message.created_at)
             },
             "assistant_message": {
                 "id": str(assistant_message.id),
@@ -110,7 +117,7 @@ async def send_message(
                 "content": assistant_message.content,
                 "tool_calls": assistant_message.tool_calls,
                 "tool_results": assistant_message.tool_results,
-                "created_at": assistant_message.created_at.isoformat()
+                "created_at": format_datetime(assistant_message.created_at)
             }
         }
         
@@ -135,8 +142,8 @@ async def get_threads(
             "id": str(thread.id),
             "title": thread.title,
             "context": thread.context,
-            "created_at": thread.created_at.isoformat(),
-            "updated_at": thread.updated_at.isoformat()
+            "created_at": format_datetime(thread.created_at),
+            "updated_at": format_datetime(thread.updated_at)
         }
         for thread in threads
     ]
@@ -169,8 +176,8 @@ async def get_thread(
         "id": str(thread.id),
         "title": thread.title,
         "context": thread.context,
-        "created_at": thread.created_at.isoformat(),
-        "updated_at": thread.updated_at.isoformat(),
+        "created_at": format_datetime(thread.created_at),
+        "updated_at": format_datetime(thread.updated_at),
         "messages": [
             {
                 "id": str(msg.id),
@@ -178,7 +185,7 @@ async def get_thread(
                 "content": msg.content,
                 "tool_calls": msg.tool_calls,
                 "tool_results": msg.tool_results,
-                "created_at": msg.created_at.isoformat()
+                "created_at": format_datetime(msg.created_at)
             }
             for msg in messages
         ]

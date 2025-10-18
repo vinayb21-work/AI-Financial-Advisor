@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import create_access_token
 from app.models.user import User
+from app.api.dependencies import get_current_user
 
 router = APIRouter()
 
@@ -122,6 +123,22 @@ async def hubspot_connect():
     )
     
     return {"authorization_url": auth_url}
+
+@router.post("/hubspot/disconnect")
+async def hubspot_disconnect(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Disconnect Hubspot account"""
+    current_user.hubspot_access_token = None
+    current_user.hubspot_refresh_token = None
+    current_user.hubspot_token_expiry = None
+    current_user.hubspot_connected = False
+    current_user.hubspot_synced = False
+    
+    await db.commit()
+    
+    return {"message": "Hubspot disconnected successfully"}
 
 @router.get("/hubspot/callback")
 async def hubspot_callback(code: str, request: Request, db: AsyncSession = Depends(get_db)):
