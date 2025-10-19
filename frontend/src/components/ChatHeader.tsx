@@ -2,7 +2,7 @@ import { RefreshCw, User } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { useMutation } from '@tanstack/react-query'
 import { integrationApi } from '../lib/api'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 interface ChatHeaderProps {
   context: string
@@ -10,10 +10,12 @@ interface ChatHeaderProps {
 }
 
 export default function ChatHeader({ context }: ChatHeaderProps) {
-  const { user, logout } = useAuthStore()
+  const { user, logout, updateUser } = useAuthStore()
   const [syncMessage, setSyncMessage] = useState('')
   const [imageError, setImageError] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const syncCheckIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   // Reset image error when user changes
   useEffect(() => {
@@ -35,21 +37,93 @@ export default function ChatHeader({ context }: ChatHeaderProps) {
     }
   }, [showUserMenu])
 
+  // Cleanup sync check interval on unmount
+  useEffect(() => {
+    return () => {
+      if (syncCheckIntervalRef.current) {
+        clearInterval(syncCheckIntervalRef.current)
+      }
+    }
+  }, [])
+
+  const checkSyncStatus = async () => {
+    try {
+      const status = await integrationApi.getSyncStatus()
+      
+      // Update user state with latest sync status
+      updateUser({
+        gmail_synced: status.gmail_synced,
+        calendar_synced: status.calendar_synced,
+        hubspot_synced: status.hubspot_synced,
+      })
+
+      // Check if all syncs are complete
+      if (status.gmail_synced && status.calendar_synced && status.hubspot_synced) {
+        setIsSyncing(false)
+        setSyncMessage('✓ Synced!')
+        
+        if (syncCheckIntervalRef.current) {
+          clearInterval(syncCheckIntervalRef.current)
+          syncCheckIntervalRef.current = null
+        }
+
+        setTimeout(() => setSyncMessage(''), 3000)
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error('Error checking sync status:', error)
+      return false
+    }
+  }
+
   const syncAll = useMutation({
     mutationFn: async () => {
-      setSyncMessage('Syncing...')
+      setIsSyncing(true)
+      setSyncMessage('Starting sync...')
+      
+      // Start all sync operations
       await Promise.all([
-        integrationApi.syncGmail(),
-        integrationApi.syncCalendar(),
-        integrationApi.syncHubspot()
+        integrationApi.syncGmail().catch(e => console.error('Gmail sync error:', e)),
+        integrationApi.syncCalendar().catch(e => console.error('Calendar sync error:', e)),
+        integrationApi.syncHubspot().catch(e => console.error('Hubspot sync error:', e))
       ])
+
+      // Start polling for sync completion
+      setSyncMessage('Syncing data...')
+      
+      // Check immediately first
+      const completed = await checkSyncStatus()
+      
+      if (!completed) {
+        // Poll every 2 seconds for up to 60 seconds
+        let attempts = 0
+        syncCheckIntervalRef.current = setInterval(async () => {
+          attempts++
+          const done = await checkSyncStatus()
+          
+          if (done || attempts > 30) {
+            if (syncCheckIntervalRef.current) {
+              clearInterval(syncCheckIntervalRef.current)
+              syncCheckIntervalRef.current = null
+            }
+            if (!done && attempts > 30) {
+              setIsSyncing(false)
+              setSyncMessage('Sync in progress...')
+              setTimeout(() => setSyncMessage(''), 3000)
+            }
+          }
+        }, 2000)
+      }
     },
-    onSuccess: () => {
-      setSyncMessage('✓ Synced!')
-      setTimeout(() => setSyncMessage(''), 3000)
-    },
-    onError: () => {
+    onError: (error) => {
+      console.error('Sync error:', error)
+      setIsSyncing(false)
       setSyncMessage('✗ Error')
+      if (syncCheckIntervalRef.current) {
+        clearInterval(syncCheckIntervalRef.current)
+        syncCheckIntervalRef.current = null
+      }
       setTimeout(() => setSyncMessage(''), 3000)
     }
   })
@@ -72,11 +146,11 @@ export default function ChatHeader({ context }: ChatHeaderProps) {
           {/* Sync Button */}
           <button
             onClick={() => syncAll.mutate()}
-            disabled={syncAll.isPending}
-            className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
-            title="Sync all data"
+            disabled={isSyncing || syncAll.isPending}
+            className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            title={isSyncing ? "Sync in progress..." : "Sync all data"}
           >
-            <RefreshCw className={`h-4 w-4 ${syncAll.isPending ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 ${isSyncing || syncAll.isPending ? 'animate-spin' : ''}`} />
             {syncMessage || 'Sync'}
           </button>
 
