@@ -26,9 +26,8 @@ services:
       - fromGroup: ai-advisor-secrets
 
   # Frontend Static Site
-  - type: web
+  - type: static
     name: ai-advisor-frontend
-    env: static
     region: oregon
     plan: free
     buildCommand: cd frontend && npm ci && npm run build
