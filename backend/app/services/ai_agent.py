@@ -35,35 +35,11 @@ class AIAgent:
     ) -> Dict[str, Any]:
         """Process a user message and generate response"""
         try:
-            # Get relevant context from RAG
-            # Use higher limit for "all/list" queries
+            # Get relevant context from RAG with dynamic limits
             message_lower = message.lower()
-            is_listing_query = any(
-                word in message_lower
-                for word in [
-                    "all",
-                    "list",
-                    "every",
-                    "what clients",
-                    "what contacts",
-                    "what events",
-                    "what meetings",
-                    "what appointments",
-                    "events scheduled",
-                    "meetings scheduled",
-                    "appointments scheduled",
-                    "events i have",
-                    "meetings i have",
-                    "appointments i have",
-                    "events for",
-                    "meetings for",
-                    "appointments for",
-                    "events today",
-                    "meetings today",
-                    "appointments today",
-                ]
-            )
-            rag_limit = 20 if is_listing_query else 5
+            rag_limit = self._determine_rag_limit(message_lower, context)
+
+            logger.info(f"Using RAG limit: {rag_limit} for query: '{message[:50]}...'")
 
             # Pass context to RAG for active filtering
             rag_results = await self.rag_service.search(
@@ -505,6 +481,146 @@ DO IT NOW - call update_task for each task ID you listed.""",
                 "tool_calls": None,
                 "tool_results": None,
             }
+
+    def _determine_rag_limit(
+        self, message_lower: str, context: Optional[str] = None
+    ) -> int:
+        """
+        Dynamically determine RAG limit based on query type and context.
+
+        Strategy:
+        - Comprehensive listing queries (all/list/every) → High limit (50-100)
+        - Calendar/event queries → Medium-high limit (40)
+        - Email queries → Medium limit (30)
+        - Contact queries → Medium limit (30)
+        - Specific queries ("tell me about...") → Low limit (10)
+        - General queries → Default (15)
+        """
+
+        # 1. COMPREHENSIVE LISTING - Highest priority
+        if any(
+            word in message_lower
+            for word in [
+                "all contacts",
+                "all clients",
+                "list all",
+                "every contact",
+                "every client",
+            ]
+        ):
+            logger.info("Detected comprehensive listing query (contacts)")
+            return 100  # Get as many as possible for complete lists
+
+        if any(
+            word in message_lower
+            for word in [
+                "all events",
+                "all meetings",
+                "all appointments",
+                "every event",
+                "every meeting",
+            ]
+        ):
+            logger.info("Detected comprehensive listing query (events)")
+            return 80  # High for events
+
+        if any(
+            word in message_lower
+            for word in ["all emails", "all messages", "every email"]
+        ):
+            logger.info("Detected comprehensive listing query (emails)")
+            return 60  # Medium-high for emails
+
+        if any(
+            word in message_lower for word in ["all tasks", "every task", "list tasks"]
+        ):
+            logger.info("Detected comprehensive listing query (tasks)")
+            return 50  # Medium for tasks
+
+        # 2. CALENDAR/EVENT QUERIES - High limit for temporal context
+        if any(
+            word in message_lower
+            for word in [
+                "what events",
+                "what meetings",
+                "what appointments",
+                "events today",
+                "meetings today",
+                "events tomorrow",
+                "events this week",
+                "meetings this week",
+                "events scheduled",
+                "meetings scheduled",
+                "events i have",
+                "meetings i have",
+                "calendar",
+                "schedule",
+            ]
+        ):
+            logger.info("Detected calendar/event query")
+            return 40  # Medium-high for calendar queries
+
+        # 3. EMAIL QUERIES - Medium limit for conversations
+        if any(
+            word in message_lower
+            for word in [
+                "emails from",
+                "messages from",
+                "email about",
+                "recent emails",
+                "latest emails",
+                "emails regarding",
+            ]
+        ):
+            logger.info("Detected email query")
+            return 30  # Medium for email queries
+
+        # 4. CONTACT QUERIES - Medium limit for relationships
+        if any(
+            word in message_lower
+            for word in [
+                "what clients",
+                "what contacts",
+                "who are my clients",
+                "contacts in hubspot",
+                "clients in hubspot",
+                "find contact",
+                "search for contact",
+            ]
+        ):
+            logger.info("Detected contact query")
+            return 30  # Medium for contact queries
+
+        # 5. CONTEXT-BASED ADJUSTMENTS
+        if context:
+            if context in ["all meetings", "upcoming events"]:
+                logger.info("Context filter: calendar - using higher limit")
+                return 40
+            elif context == "recent emails":
+                logger.info("Context filter: emails - using medium limit")
+                return 30
+            elif context == "contacts":
+                logger.info("Context filter: contacts - using medium limit")
+                return 30
+
+        # 6. SPECIFIC ITEM QUERIES - Low limit for precision
+        if any(
+            word in message_lower
+            for word in [
+                "tell me about",
+                "who is",
+                "what is",
+                "information about",
+                "details about",
+                "show me",
+            ]
+        ):
+            logger.info("Detected specific item query")
+            return 10  # Low for specific queries
+
+        # 7. DEFAULT - Balanced limit
+        logger.info("Using default RAG limit")
+        return 15  # Default moderate limit
 
     def _get_system_prompt(
         self, rag_context: str, instructions: str, context: Optional[str] = None

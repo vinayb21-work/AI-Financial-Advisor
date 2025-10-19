@@ -194,6 +194,290 @@ Notes: {properties.get('notes', '')}
                 logger.error(f"Error importing contact {contact.get('id')}: {e}")
                 continue
     
+    async def import_hubspot_engagements(self, notes: List[Dict[str, Any]], emails: List[Dict[str, Any]], 
+                                        calls: List[Dict[str, Any]], meetings: List[Dict[str, Any]], 
+                                        tasks: List[Dict[str, Any]]):
+        """Import Hubspot engagements (notes, emails, calls, meetings, tasks) into vector database"""
+        
+        # Import notes
+        for note in notes:
+            try:
+                properties = note.get('properties', {})
+                content = f"""
+Note: {properties.get('hs_note_body', '')}
+Created: {properties.get('hs_timestamp', '')}
+                """.strip()
+                
+                embedding = await self.get_embedding(content)
+                
+                result = await self.db.execute(
+                    select(Document).where(
+                        Document.user_id == self.user.id,
+                        Document.source == "hubspot_note",
+                        Document.source_id == note['id']
+                    )
+                )
+                existing_doc = result.scalar_one_or_none()
+                
+                if existing_doc:
+                    existing_doc.content = content
+                    existing_doc.embedding = embedding
+                    existing_doc.doc_metadata = json.dumps(note)
+                else:
+                    document = Document(
+                        user_id=self.user.id,
+                        source="hubspot_note",
+                        source_id=note['id'],
+                        document_type="note",
+                        content=content,
+                        title="Note",
+                        embedding=embedding,
+                        doc_metadata=json.dumps(note)
+                    )
+                    self.db.add(document)
+                
+                await self.db.commit()
+            except Exception as e:
+                logger.error(f"Error importing note {note.get('id')}: {e}")
+                continue
+        
+        # Import emails
+        for email in emails:
+            try:
+                properties = email.get('properties', {})
+                content = f"""
+Email Subject: {properties.get('hs_email_subject', '')}
+Email Body: {properties.get('hs_email_text', '')}
+Direction: {properties.get('hs_email_direction', '')}
+Status: {properties.get('hs_email_status', '')}
+                """.strip()
+                
+                embedding = await self.get_embedding(content)
+                
+                result = await self.db.execute(
+                    select(Document).where(
+                        Document.user_id == self.user.id,
+                        Document.source == "hubspot_email",
+                        Document.source_id == email['id']
+                    )
+                )
+                existing_doc = result.scalar_one_or_none()
+                
+                if existing_doc:
+                    existing_doc.content = content
+                    existing_doc.embedding = embedding
+                    existing_doc.doc_metadata = json.dumps(email)
+                else:
+                    document = Document(
+                        user_id=self.user.id,
+                        source="hubspot_email",
+                        source_id=email['id'],
+                        document_type="email",
+                        content=content,
+                        title=properties.get('hs_email_subject', 'Email'),
+                        embedding=embedding,
+                        doc_metadata=json.dumps(email)
+                    )
+                    self.db.add(document)
+                
+                await self.db.commit()
+            except Exception as e:
+                logger.error(f"Error importing email {email.get('id')}: {e}")
+                continue
+        
+        # Import calls
+        for call in calls:
+            try:
+                properties = call.get('properties', {})
+                content = f"""
+Call: {properties.get('hs_call_title', '')}
+Notes: {properties.get('hs_call_body', '')}
+Duration: {properties.get('hs_call_duration', '')} seconds
+Status: {properties.get('hs_call_status', '')}
+Direction: {properties.get('hs_call_direction', '')}
+                """.strip()
+                
+                embedding = await self.get_embedding(content)
+                
+                result = await self.db.execute(
+                    select(Document).where(
+                        Document.user_id == self.user.id,
+                        Document.source == "hubspot_call",
+                        Document.source_id == call['id']
+                    )
+                )
+                existing_doc = result.scalar_one_or_none()
+                
+                if existing_doc:
+                    existing_doc.content = content
+                    existing_doc.embedding = embedding
+                    existing_doc.doc_metadata = json.dumps(call)
+                else:
+                    document = Document(
+                        user_id=self.user.id,
+                        source="hubspot_call",
+                        source_id=call['id'],
+                        document_type="call",
+                        content=content,
+                        title=properties.get('hs_call_title', 'Call'),
+                        embedding=embedding,
+                        doc_metadata=json.dumps(call)
+                    )
+                    self.db.add(document)
+                
+                await self.db.commit()
+            except Exception as e:
+                logger.error(f"Error importing call {call.get('id')}: {e}")
+                continue
+        
+        # Import meetings
+        for meeting in meetings:
+            try:
+                properties = meeting.get('properties', {})
+                content = f"""
+Meeting: {properties.get('hs_meeting_title', '')}
+Notes: {properties.get('hs_meeting_body', '')}
+Start: {properties.get('hs_meeting_start_time', '')}
+End: {properties.get('hs_meeting_end_time', '')}
+Outcome: {properties.get('hs_meeting_outcome', '')}
+                """.strip()
+                
+                embedding = await self.get_embedding(content)
+                
+                result = await self.db.execute(
+                    select(Document).where(
+                        Document.user_id == self.user.id,
+                        Document.source == "hubspot_meeting",
+                        Document.source_id == meeting['id']
+                    )
+                )
+                existing_doc = result.scalar_one_or_none()
+                
+                if existing_doc:
+                    existing_doc.content = content
+                    existing_doc.embedding = embedding
+                    existing_doc.doc_metadata = json.dumps(meeting)
+                else:
+                    document = Document(
+                        user_id=self.user.id,
+                        source="hubspot_meeting",
+                        source_id=meeting['id'],
+                        document_type="meeting",
+                        content=content,
+                        title=properties.get('hs_meeting_title', 'Meeting'),
+                        embedding=embedding,
+                        doc_metadata=json.dumps(meeting)
+                    )
+                    self.db.add(document)
+                
+                await self.db.commit()
+            except Exception as e:
+                logger.error(f"Error importing meeting {meeting.get('id')}: {e}")
+                continue
+        
+        # Import tasks
+        for task in tasks:
+            try:
+                properties = task.get('properties', {})
+                content = f"""
+Task: {properties.get('hs_task_subject', '')}
+Description: {properties.get('hs_task_body', '')}
+Status: {properties.get('hs_task_status', '')}
+Priority: {properties.get('hs_task_priority', '')}
+Type: {properties.get('hs_task_type', '')}
+                """.strip()
+                
+                embedding = await self.get_embedding(content)
+                
+                result = await self.db.execute(
+                    select(Document).where(
+                        Document.user_id == self.user.id,
+                        Document.source == "hubspot_task",
+                        Document.source_id == task['id']
+                    )
+                )
+                existing_doc = result.scalar_one_or_none()
+                
+                if existing_doc:
+                    existing_doc.content = content
+                    existing_doc.embedding = embedding
+                    existing_doc.doc_metadata = json.dumps(task)
+                else:
+                    document = Document(
+                        user_id=self.user.id,
+                        source="hubspot_task",
+                        source_id=task['id'],
+                        document_type="task",
+                        content=content,
+                        title=properties.get('hs_task_subject', 'Task'),
+                        embedding=embedding,
+                        doc_metadata=json.dumps(task)
+                    )
+                    self.db.add(document)
+                
+                await self.db.commit()
+            except Exception as e:
+                logger.error(f"Error importing task {task.get('id')}: {e}")
+                continue
+        
+        logger.info(f"Imported {len(notes)} notes, {len(emails)} emails, {len(calls)} calls, {len(meetings)} meetings, {len(tasks)} tasks")
+    
+    async def import_hubspot_companies(self, companies: List[Dict[str, Any]]):
+        """Import Hubspot companies with revenue data into vector database"""
+        for company in companies:
+            try:
+                properties = company.get('properties', {})
+                content = f"""
+Company: {properties.get('name', '')}
+Domain: {properties.get('domain', '')}
+Industry: {properties.get('industry', '')}
+Annual Revenue: ${properties.get('annualrevenue', 'N/A')}
+Number of Employees: {properties.get('numberofemployees', '')}
+Location: {properties.get('city', '')}, {properties.get('state', '')} {properties.get('country', '')}
+Phone: {properties.get('phone', '')}
+Type: {properties.get('type', '')}
+Description: {properties.get('description', '')}
+                """.strip()
+                
+                embedding = await self.get_embedding(content)
+                
+                result = await self.db.execute(
+                    select(Document).where(
+                        Document.user_id == self.user.id,
+                        Document.source == "hubspot_company",
+                        Document.source_id == company['id']
+                    )
+                )
+                existing_doc = result.scalar_one_or_none()
+                
+                company_name = properties.get('name', 'Company')
+                
+                if existing_doc:
+                    existing_doc.content = content
+                    existing_doc.embedding = embedding
+                    existing_doc.title = company_name
+                    existing_doc.doc_metadata = json.dumps(company)
+                else:
+                    document = Document(
+                        user_id=self.user.id,
+                        source="hubspot_company",
+                        source_id=company['id'],
+                        document_type="company",
+                        content=content,
+                        title=company_name,
+                        embedding=embedding,
+                        doc_metadata=json.dumps(company)
+                    )
+                    self.db.add(document)
+                
+                await self.db.commit()
+                
+            except Exception as e:
+                logger.error(f"Error importing company {company.get('id')}: {e}")
+                continue
+        
+        logger.info(f"Imported {len(companies)} companies")
+    
     async def search(self, query: str, limit: int = 5, context: Optional[str] = None) -> List[Dict[str, Any]]:
         """Search for relevant documents using vector similarity with optional context filtering"""
         try:

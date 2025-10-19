@@ -323,6 +323,195 @@ class ToolExecutor:
                     },
                 },
             },
+            # ==================== PHASE 1: ENGAGEMENT TOOLS ====================
+            {
+                "type": "function",
+                "function": {
+                    "name": "list_contact_notes",
+                    "description": "List all notes for a specific Hubspot contact. Use this when user asks 'what notes do I have about John?', 'show notes for Sara', etc.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "contact_email": {
+                                "type": "string",
+                                "description": "Contact email address",
+                            }
+                        },
+                        "required": ["contact_email"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "list_contact_calls",
+                    "description": "List all call records for a specific Hubspot contact",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "contact_email": {
+                                "type": "string",
+                                "description": "Contact email address",
+                            }
+                        },
+                        "required": ["contact_email"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "list_contact_meetings",
+                    "description": "List all meeting records for a specific Hubspot contact",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "contact_email": {
+                                "type": "string",
+                                "description": "Contact email address",
+                            }
+                        },
+                        "required": ["contact_email"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_contact_activity_timeline",
+                    "description": "Get complete activity timeline for a contact including all notes, emails, calls, meetings, and tasks from Hubspot. Use this when user asks 'show me all activity for John', 'what's the history with Sara', etc.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "contact_email": {
+                                "type": "string",
+                                "description": "Contact email address",
+                            }
+                        },
+                        "required": ["contact_email"],
+                    },
+                },
+            },
+            # ==================== PHASE 2: COMPANY TOOLS ====================
+            {
+                "type": "function",
+                "function": {
+                    "name": "list_all_companies",
+                    "description": "List ALL companies in Hubspot with their revenue data. Use this when user asks 'what companies do I have?', 'list all accounts', 'show me companies with revenue over $1M', etc.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "limit": {
+                                "type": "integer",
+                                "description": "Maximum number of companies to return",
+                                "default": 100,
+                            }
+                        },
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "search_companies",
+                    "description": "Search for companies in Hubspot by name or domain",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "Search query (company name or domain)",
+                            }
+                        },
+                        "required": ["query"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_company_details",
+                    "description": "Get detailed information for a specific company including revenue, industry, employee count, etc.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "company_name": {
+                                "type": "string",
+                                "description": "Company name to lookup",
+                            }
+                        },
+                        "required": ["company_name"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_company_contacts",
+                    "description": "Get all contacts associated with a specific company",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "company_name": {
+                                "type": "string",
+                                "description": "Company name",
+                            }
+                        },
+                        "required": ["company_name"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "create_company",
+                    "description": "Create a new company in Hubspot CRM",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string", "description": "Company name"},
+                            "domain": {
+                                "type": "string",
+                                "description": "Company domain (e.g., acme.com)",
+                            },
+                            "industry": {"type": "string", "description": "Industry"},
+                            "annualrevenue": {
+                                "type": "string",
+                                "description": "Annual revenue (e.g., '5000000')",
+                            },
+                            "numberofemployees": {
+                                "type": "string",
+                                "description": "Number of employees",
+                            },
+                            "city": {"type": "string", "description": "City"},
+                            "state": {"type": "string", "description": "State"},
+                            "phone": {"type": "string", "description": "Phone number"},
+                        },
+                        "required": ["name"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "update_hubspot_contact",
+                    "description": "Update an existing Hubspot contact's information (phone, company, etc.)",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "contact_email": {
+                                "type": "string",
+                                "description": "Contact email address",
+                            },
+                            "properties": {
+                                "type": "object",
+                                "description": "Properties to update (e.g., {'phone': '555-1234', 'company': 'Acme Corp'})",
+                            },
+                        },
+                        "required": ["contact_email", "properties"],
+                    },
+                },
+            },
         ]
 
     async def execute(self, function_name: str, args: Dict[str, Any]) -> Dict[str, Any]:
@@ -354,6 +543,28 @@ class ToolExecutor:
                 return await self._list_tasks(args)
             elif function_name == "update_task":
                 return await self._update_task(args)
+            # Phase 1: Engagement tools
+            elif function_name == "list_contact_notes":
+                return await self._list_contact_notes(args)
+            elif function_name == "list_contact_calls":
+                return await self._list_contact_calls(args)
+            elif function_name == "list_contact_meetings":
+                return await self._list_contact_meetings(args)
+            elif function_name == "get_contact_activity_timeline":
+                return await self._get_contact_activity_timeline(args)
+            # Phase 2: Company tools
+            elif function_name == "list_all_companies":
+                return await self._list_all_companies(args)
+            elif function_name == "search_companies":
+                return await self._search_companies(args)
+            elif function_name == "get_company_details":
+                return await self._get_company_details(args)
+            elif function_name == "get_company_contacts":
+                return await self._get_company_contacts(args)
+            elif function_name == "create_company":
+                return await self._create_company(args)
+            elif function_name == "update_hubspot_contact":
+                return await self._update_hubspot_contact(args)
             else:
                 return {"error": f"Unknown function: {function_name}"}
         except Exception as e:
@@ -561,3 +772,131 @@ class ToolExecutor:
             "task_id": str(task.id),
             "new_status": new_status.value,
         }
+
+    # ==================== PHASE 1: ENGAGEMENT METHODS ====================
+
+    async def _list_contact_notes(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """List notes for a contact"""
+        contact_email = args["contact_email"]
+
+        # First find contact
+        contacts = await self.hubspot_service.search_contacts(contact_email)
+        if not contacts:
+            return {"error": f"Contact not found: {contact_email}", "notes": []}
+
+        contact_id = contacts[0]["id"]
+        notes = await self.hubspot_service.fetch_notes(contact_id=contact_id)
+
+        return {"contact_email": contact_email, "notes": notes, "count": len(notes)}
+
+    async def _list_contact_calls(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """List calls for a contact"""
+        contact_email = args["contact_email"]
+
+        contacts = await self.hubspot_service.search_contacts(contact_email)
+        if not contacts:
+            return {"error": f"Contact not found: {contact_email}", "calls": []}
+
+        contact_id = contacts[0]["id"]
+        calls = await self.hubspot_service.fetch_calls(contact_id=contact_id)
+
+        return {"contact_email": contact_email, "calls": calls, "count": len(calls)}
+
+    async def _list_contact_meetings(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """List meetings for a contact"""
+        contact_email = args["contact_email"]
+
+        contacts = await self.hubspot_service.search_contacts(contact_email)
+        if not contacts:
+            return {"error": f"Contact not found: {contact_email}", "meetings": []}
+
+        contact_id = contacts[0]["id"]
+        meetings = await self.hubspot_service.fetch_meetings(contact_id=contact_id)
+
+        return {
+            "contact_email": contact_email,
+            "meetings": meetings,
+            "count": len(meetings),
+        }
+
+    async def _get_contact_activity_timeline(
+        self, args: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Get complete activity timeline for a contact"""
+        contact_email = args["contact_email"]
+        timeline = await self.hubspot_service.get_contact_timeline(contact_email)
+        return timeline
+
+    # ==================== PHASE 2: COMPANY METHODS ====================
+
+    async def _list_all_companies(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """List all companies"""
+        limit = args.get("limit", 100)
+        companies = await self.hubspot_service.fetch_companies(limit=limit)
+
+        return {
+            "companies": companies,
+            "count": len(companies),
+            "message": f"Found {len(companies)} companies in Hubspot",
+        }
+
+    async def _search_companies(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Search companies"""
+        query = args["query"]
+        companies = await self.hubspot_service.search_companies(query)
+
+        return {"companies": companies, "count": len(companies)}
+
+    async def _get_company_details(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Get company details"""
+        company_name = args["company_name"]
+
+        # Search for company
+        companies = await self.hubspot_service.search_companies(company_name)
+        if not companies:
+            return {"error": f"Company not found: {company_name}"}
+
+        # Get full details
+        company_id = companies[0]["id"]
+        company = await self.hubspot_service.get_company(company_id)
+
+        return {"company": company}
+
+    async def _get_company_contacts(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Get contacts for a company"""
+        company_name = args["company_name"]
+
+        # Search for company
+        companies = await self.hubspot_service.search_companies(company_name)
+        if not companies:
+            return {"error": f"Company not found: {company_name}", "contacts": []}
+
+        # Get contacts
+        company_id = companies[0]["id"]
+        contacts = await self.hubspot_service.get_company_contacts(company_id)
+
+        return {
+            "company_name": company_name,
+            "contacts": contacts,
+            "count": len(contacts),
+        }
+
+    async def _create_company(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a new company"""
+        company = await self.hubspot_service.create_company(args)
+        return {"status": "created", "company_id": company["id"]}
+
+    async def _update_hubspot_contact(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Update a Hubspot contact"""
+        contact_email = args["contact_email"]
+        properties = args["properties"]
+
+        # First find contact
+        contacts = await self.hubspot_service.search_contacts(contact_email)
+        if not contacts:
+            return {"error": f"Contact not found: {contact_email}"}
+
+        contact_id = contacts[0]["id"]
+        result = await self.hubspot_service.update_contact(contact_id, properties)
+
+        return {"status": "updated", "contact_id": contact_id}

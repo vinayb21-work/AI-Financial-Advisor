@@ -223,10 +223,27 @@ async def sync_hubspot_background(user_id: str):
                 return
 
             hubspot_service = HubspotService(user, db)
+
+            # Fetch contacts
             contacts = await hubspot_service.fetch_contacts()
 
+            # Fetch engagements (notes, emails, calls, meetings, tasks)
+            notes = await hubspot_service.fetch_notes()
+            emails = await hubspot_service.fetch_emails()
+            calls = await hubspot_service.fetch_calls()
+            meetings = await hubspot_service.fetch_meetings()
+            tasks_hs = await hubspot_service.fetch_tasks_hubspot()
+
+            # Fetch companies
+            companies = await hubspot_service.fetch_companies()
+
+            # Import all to RAG
             rag_service = RAGService(db, user)
             await rag_service.import_hubspot_contacts(contacts)
+            await rag_service.import_hubspot_engagements(
+                notes, emails, calls, meetings, tasks_hs
+            )
+            await rag_service.import_hubspot_companies(companies)
 
             # Trigger proactive agent for hubspot contacts
             from app.services.proactive_agent_service import ProactiveAgentService
