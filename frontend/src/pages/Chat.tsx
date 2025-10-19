@@ -94,11 +94,33 @@ export default function Chat() {
     queryClient.invalidateQueries({ queryKey: ['threads'] })
   }
 
+  const handleRenameThread = async (threadId: string, newTitle: string) => {
+    try {
+      await chatApi.updateThread(threadId, { title: newTitle })
+      queryClient.invalidateQueries({ queryKey: ['threads'] })
+      queryClient.invalidateQueries({ queryKey: ['thread', threadId] })
+    } catch (error) {
+      console.error('Error renaming thread:', error)
+    }
+  }
+
+  const handleDeleteThread = async (threadId: string) => {
+    try {
+      await chatApi.deleteThread(threadId)
+      if (currentThreadId === threadId) {
+        setCurrentThreadId(null)
+      }
+      queryClient.invalidateQueries({ queryKey: ['threads'] })
+    } catch (error) {
+      console.error('Error deleting thread:', error)
+    }
+  }
+
   // Check if setup is needed - all integrations must be connected and synced
-  const needsSetup = 
-    !user?.hubspot_connected || 
-    !user?.gmail_synced || 
-    !user?.calendar_synced || 
+  const needsSetup =
+    !user?.hubspot_connected ||
+    !user?.gmail_synced ||
+    !user?.calendar_synced ||
     !user?.hubspot_synced
 
   if (needsSetup) {
@@ -112,13 +134,15 @@ export default function Chat() {
         currentThreadId={currentThreadId}
         onSelectThread={setCurrentThreadId}
         onNewThread={handleNewThread}
+        onRenameThread={handleRenameThread}
+        onDeleteThread={handleDeleteThread}
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
 
       <div className="flex flex-1 flex-col">
-        <ChatHeader 
-          context={context} 
+        <ChatHeader
+          context={context}
           onContextChange={setContext}
         />
 

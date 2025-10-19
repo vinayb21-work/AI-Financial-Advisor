@@ -14,16 +14,19 @@ from app.services.ai_agent import AIAgent
 
 router = APIRouter()
 
+
 def format_datetime(dt: datetime) -> str:
     """Format datetime as ISO string with UTC indicator"""
     if dt is None:
         return None
-    return dt.isoformat() + 'Z' if not dt.tzinfo else dt.isoformat()
+    return dt.isoformat() + "Z" if not dt.tzinfo else dt.isoformat()
+
 
 class MessageCreate(BaseModel):
     content: str
     thread_id: Optional[str] = None
     context: Optional[str] = None
+
 
 class MessageResponse(BaseModel):
     id: str
@@ -33,6 +36,7 @@ class MessageResponse(BaseModel):
     tool_results: Optional[dict] = None
     created_at: str
 
+
 class ThreadResponse(BaseModel):
     id: str
     title: str
@@ -41,11 +45,12 @@ class ThreadResponse(BaseModel):
     updated_at: str
     messages: List[MessageResponse] = []
 
+
 @router.post("/message")
 async def send_message(
     message_data: MessageCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Send a message to the AI agent"""
     try:
@@ -54,67 +59,62 @@ async def send_message(
             result = await db.execute(
                 select(Thread).where(
                     Thread.id == message_data.thread_id,
-                    Thread.user_id == current_user.id
+                    Thread.user_id == current_user.id,
                 )
             )
             thread = result.scalar_one_or_none()
             if not thread:
                 raise HTTPException(status_code=404, detail="Thread not found")
-            
+
             # Update thread context if it changed
             if message_data.context and thread.context != message_data.context:
                 thread.context = message_data.context
                 await db.commit()
         else:
             # Create new thread
-            thread = Thread(
-                user_id=current_user.id,
-                context=message_data.context
-            )
+            thread = Thread(user_id=current_user.id, context=message_data.context)
             db.add(thread)
             await db.commit()
             await db.refresh(thread)
-        
+
         # Save user message
         user_message = Message(
-            thread_id=thread.id,
-            role=MessageRole.USER,
-            content=message_data.content
+            thread_id=thread.id, role=MessageRole.USER, content=message_data.content
         )
         db.add(user_message)
         await db.commit()
-        
+
         # Get AI response
         ai_agent = AIAgent(db, current_user)
         response = await ai_agent.process_message(
-            message_data.content,
-            thread.id,
-            message_data.context
+            message_data.content, thread.id, message_data.context
         )
-        
+
         # Save assistant message
         assistant_message = Message(
             thread_id=thread.id,
             role=MessageRole.ASSISTANT,
-            content=response['content'],
-            tool_calls=response.get('tool_calls'),
-            tool_results=response.get('tool_results')
+            content=response["content"],
+            tool_calls=response.get("tool_calls"),
+            tool_results=response.get("tool_results"),
         )
         db.add(assistant_message)
         await db.commit()
-        
+
         # Update thread title if it's the first message
         if not thread.title or thread.title == "New conversation":
-            thread.title = message_data.content[:50] + ("..." if len(message_data.content) > 50 else "")
+            thread.title = message_data.content[:50] + (
+                "..." if len(message_data.content) > 50 else ""
+            )
             await db.commit()
-        
+
         return {
             "thread_id": str(thread.id),
             "user_message": {
                 "id": str(user_message.id),
                 "role": user_message.role.value,
                 "content": user_message.content,
-                "created_at": format_datetime(user_message.created_at)
+                "created_at": format_datetime(user_message.created_at),
             },
             "assistant_message": {
                 "id": str(assistant_message.id),
@@ -122,17 +122,17 @@ async def send_message(
                 "content": assistant_message.content,
                 "tool_calls": assistant_message.tool_calls,
                 "tool_results": assistant_message.tool_results,
-                "created_at": format_datetime(assistant_message.created_at)
-            }
+                "created_at": format_datetime(assistant_message.created_at),
+            },
         }
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/threads")
 async def get_threads(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """Get all threads for the current user"""
     result = await db.execute(
@@ -141,34 +141,34 @@ async def get_threads(
         .order_by(desc(Thread.updated_at))
     )
     threads = result.scalars().all()
-    
+
     return [
         {
             "id": str(thread.id),
             "title": thread.title,
             "context": thread.context,
             "created_at": format_datetime(thread.created_at),
-            "updated_at": format_datetime(thread.updated_at)
+            "updated_at": format_datetime(thread.updated_at),
         }
         for thread in threads
     ]
+
 
 @router.get("/threads/{thread_id}")
 async def get_thread(
     thread_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get a specific thread with all messages"""
     result = await db.execute(
-        select(Thread)
-        .where(Thread.id == thread_id, Thread.user_id == current_user.id)
+        select(Thread).where(Thread.id == thread_id, Thread.user_id == current_user.id)
     )
     thread = result.scalar_one_or_none()
-    
+
     if not thread:
         raise HTTPException(status_code=404, detail="Thread not found")
-    
+
     # Get messages
     messages_result = await db.execute(
         select(Message)
@@ -176,7 +176,7 @@ async def get_thread(
         .order_by(Message.created_at)
     )
     messages = messages_result.scalars().all()
-    
+
     return {
         "id": str(thread.id),
         "title": thread.title,
@@ -190,30 +190,63 @@ async def get_thread(
                 "content": msg.content,
                 "tool_calls": msg.tool_calls,
                 "tool_results": msg.tool_results,
-                "created_at": format_datetime(msg.created_at)
+                "created_at": format_datetime(msg.created_at),
             }
             for msg in messages
-        ]
+        ],
     }
+
+
+class ThreadUpdate(BaseModel):
+    title: str
+
+
+@router.patch("/threads/{thread_id}")
+async def update_thread(
+    thread_id: UUID,
+    thread_data: ThreadUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update a thread (rename)"""
+    result = await db.execute(
+        select(Thread).where(Thread.id == thread_id, Thread.user_id == current_user.id)
+    )
+    thread = result.scalar_one_or_none()
+
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+
+    thread.title = thread_data.title
+    thread.updated_at = datetime.utcnow()
+    await db.commit()
+    await db.refresh(thread)
+
+    return {
+        "id": str(thread.id),
+        "title": thread.title,
+        "context": thread.context,
+        "created_at": format_datetime(thread.created_at),
+        "updated_at": format_datetime(thread.updated_at),
+    }
+
 
 @router.delete("/threads/{thread_id}")
 async def delete_thread(
     thread_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Delete a thread"""
     result = await db.execute(
-        select(Thread)
-        .where(Thread.id == thread_id, Thread.user_id == current_user.id)
+        select(Thread).where(Thread.id == thread_id, Thread.user_id == current_user.id)
     )
     thread = result.scalar_one_or_none()
-    
+
     if not thread:
         raise HTTPException(status_code=404, detail="Thread not found")
-    
+
     await db.delete(thread)
     await db.commit()
-    
-    return {"message": "Thread deleted successfully"}
 
+    return {"message": "Thread deleted successfully"}
