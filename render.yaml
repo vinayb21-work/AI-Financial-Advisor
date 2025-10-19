@@ -1,56 +1,45 @@
 services:
+  # PostgreSQL Database
+  - type: pserv
+    name: ai-advisor-db
+    env: docker
+    plan: free
+    region: oregon
+    ipAllowList: []
+    databaseName: ai_advisor_db
+    databaseUser: ai_advisor
+
   # Backend API
   - type: web
     name: ai-advisor-backend
     env: python
-    buildCommand: "cd backend && pip install -r requirements.txt"
-    startCommand: "cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT"
+    region: oregon
+    plan: free
+    buildCommand: cd backend && pip install -r requirements.txt
+    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
     envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
       - key: DATABASE_URL
-        sync: false
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: GOOGLE_CLIENT_ID
-        sync: false
-      - key: GOOGLE_CLIENT_SECRET
-        sync: false
-      - key: GOOGLE_REDIRECT_URI
-        sync: false
-      - key: HUBSPOT_CLIENT_ID
-        sync: false
-      - key: HUBSPOT_CLIENT_SECRET
-        sync: false
-      - key: HUBSPOT_REDIRECT_URI
-        sync: false
-      - key: SECRET_KEY
-        generateValue: true
-      - key: FRONTEND_URL
-        sync: false
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: ai-advisor-redis
+        fromDatabase:
+          name: ai-advisor-db
           property: connectionString
+      - fromGroup: ai-advisor-secrets
 
-  # Frontend
+  # Frontend Static Site
   - type: web
     name: ai-advisor-frontend
     env: static
-    buildCommand: "cd frontend && npm install && npm run build"
+    region: oregon
+    plan: free
+    buildCommand: cd frontend && npm ci && npm run build
     staticPublishPath: frontend/dist
+    pullRequestPreviewsEnabled: true
     envVars:
       - key: VITE_API_URL
-        sync: false
-
-  # Redis for task queue
-  - type: redis
-    name: ai-advisor-redis
-    plan: free
-    maxmemoryPolicy: noeviction
-
-databases:
-  # PostgreSQL with pgvector
-  - name: ai-advisor-db
-    plan: free
-    postgresMajorVersion: 15
-
+        value: https://ai-advisor-backend.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
