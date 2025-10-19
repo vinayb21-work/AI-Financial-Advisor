@@ -93,9 +93,6 @@ htmlcov/
 # Jupyter Notebook
 .ipynb_checkpoints
 
-# pyenv
-.python-version
-
 # Temporary files
 *.tmp
 *.temp
