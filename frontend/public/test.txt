@@ -1,0 +1,2 @@
+test file to verify public directory is copied
+
