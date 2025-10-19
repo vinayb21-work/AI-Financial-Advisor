@@ -358,7 +358,7 @@ CORS_ORIGINS=https://ai-advisor-frontend.onrender.com,http://localhost:5173
 3. **Auth** tab
 4. **Redirect URLs** - Add:
    ```
-   https://ai-advisor-frontend.onrender.com/hubspot/callback
+   https://ai-advisor-backend.onrender.com/auth/hubspot/callback
    ```
 5. Click **"Save"**
 
@@ -525,7 +525,7 @@ Render Dashboard → ai-advisor-backend → Logs
 **For Hubspot:**
 1. Verify redirect URI:
    ```
-   https://ai-advisor-frontend.onrender.com/hubspot/callback
+   https://ai-advisor-backend.onrender.com/auth/hubspot/callback
    ```
 2. Check app is public or you're a test user
 
