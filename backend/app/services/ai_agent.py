@@ -281,7 +281,11 @@ class AIAgent:
                     )
 
                     tool_results.append(
-                        {"tool_call_id": tool_call.id, "result": result}
+                        {
+                            "tool_call_id": tool_call.id,
+                            "function_name": function_name,
+                            "result": result,
+                        }
                     )
 
                     # Add tool result to messages for second completion
@@ -420,6 +424,7 @@ DO IT NOW - call update_task for each task ID you listed.""",
                             tool_results.append(
                                 {
                                     "tool_call_id": retry_tool_call.id,
+                                    "function_name": retry_function_name,
                                     "result": retry_result,
                                 }
                             )

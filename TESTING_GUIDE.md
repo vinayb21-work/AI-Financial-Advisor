@@ -91,7 +91,7 @@ You: "Schedule a meeting with Vinay B for next Tuesday"
 **Step 2: Simulate response (manual)**
 In a new message:
 ```
-You: "Sara responded saying Tuesday at 2pm works"
+You: "Vinay B responded saying Tuesday at 2pm works"
 ```
 
 **Expected:**

@@ -113,8 +113,11 @@ export default function ChatMessages({ messages, loading }: ChatMessagesProps) {
                       key={idx}
                       className="rounded-lg border border-gray-200 bg-gray-50 p-3"
                     >
-                      <p className="text-xs font-medium text-gray-600">
-                        Tool: {result.tool_call_id}
+                      <p className="text-xs font-medium text-gray-700">
+                        🔧 {result.function_name || 'Tool'}
+                      </p>
+                      <p className="mt-0.5 text-xs text-gray-500">
+                        {result.tool_call_id}
                       </p>
                       {result.result.status && (
                         <p className="mt-1 text-xs text-gray-700">
