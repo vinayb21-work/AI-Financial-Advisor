@@ -6,9 +6,26 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Convert DATABASE_URL to async format for Render compatibility
+# Render provides postgres:// or postgresql://, we need postgresql+asyncpg://
+def get_async_database_url(url: str) -> str:
+    """Convert database URL to async format"""
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    elif url.startswith("postgresql+asyncpg://"):
+        return url  # Already in correct format
+    else:
+        # Assume it needs asyncpg driver
+        return f"postgresql+asyncpg://{url.split('://', 1)[-1]}" if "://" in url else url
+
+database_url = get_async_database_url(settings.DATABASE_URL)
+logger.info(f"Using database URL scheme: {database_url.split('://')[0]}")
+
 # Create async engine
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    database_url,
     echo=True,
     poolclass=NullPool,
 )
