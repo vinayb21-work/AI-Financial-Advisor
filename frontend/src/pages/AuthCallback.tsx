@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useAuthStore } from '../store/authStore.ts'
-import { authApi } from '../lib/api.ts'
+import { useAuthStore } from '../store/authStore'
+import { authApi } from '../lib/api'
 import { Loader2 } from 'lucide-react'
 
 export default function AuthCallback() {

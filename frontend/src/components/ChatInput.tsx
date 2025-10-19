@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Send, Plus, Mic, ChevronDown, Calendar, Mail, Users, Clock, Database } from 'lucide-react'
-import { cn } from '../lib/utils.ts'
+import { cn } from '../lib/utils'
 
 interface ChatInputProps {
   onSend: (message: string) => void
