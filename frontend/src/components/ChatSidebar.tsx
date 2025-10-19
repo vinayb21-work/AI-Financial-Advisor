@@ -1,6 +1,6 @@
 import { Plus, MessageSquare, PanelLeftClose, PanelLeft, Trash2, Edit2, X, MoreVertical } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
-import { cn } from '@/lib/utils'
+import { cn } from '../lib/utils'
 
 interface Thread {
   id: string

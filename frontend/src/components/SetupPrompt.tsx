@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { CheckCircle2, Circle, Loader2, RefreshCw } from 'lucide-react'
-import { authApi, integrationApi } from '@/lib/api'
-import { useAuthStore } from '@/store/authStore'
+import { authApi, integrationApi } from '../lib/api'
+import { useAuthStore } from '../store/authStore'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 
 export default function SetupPrompt() {

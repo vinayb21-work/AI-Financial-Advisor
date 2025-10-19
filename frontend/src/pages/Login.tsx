@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { authApi } from '@/lib/api'
+import { authApi } from '../lib/api'
 import { Loader2 } from 'lucide-react'
 
 export default function Login() {
