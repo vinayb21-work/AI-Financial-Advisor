@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { CheckCircle2, Circle, Loader2, RefreshCw } from 'lucide-react'
 import { authApi, integrationApi } from '../lib/api'
@@ -9,6 +9,8 @@ export default function SetupPrompt() {
   const { user, updateUser } = useAuthStore()
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
+  const [syncingServices, setSyncingServices] = useState<Set<string>>(new Set())
+  const previousSyncStatus = useRef<any>(null)
 
   // Refetch user data if just connected Hubspot
   useEffect(() => {
@@ -30,19 +32,40 @@ export default function SetupPrompt() {
       const response = await integrationApi.getSyncStatus()
       return response.data
     },
-    refetchInterval: 3000, // Poll every 3 seconds
+    refetchInterval: 2000, // Poll every 2 seconds for faster updates
   })
 
-  // Update user object when sync status changes
+  // Update user object when sync status changes and detect completion
   useEffect(() => {
     if (syncStatus) {
       updateUser({
-        gmail_synced: syncStatus.gmail?.synced || false,
-        calendar_synced: syncStatus.calendar?.synced || false,
-        hubspot_synced: syncStatus.hubspot?.synced || false,
+        gmail_synced: syncStatus.gmail_synced || false,
+        calendar_synced: syncStatus.calendar_synced || false,
+        hubspot_synced: syncStatus.hubspot_synced || false,
       })
+
+      // Check if any syncing service has completed
+      if (previousSyncStatus.current) {
+        const newSyncingServices = new Set(syncingServices)
+        
+        if (syncingServices.has('gmail') && syncStatus.gmail_synced) {
+          newSyncingServices.delete('gmail')
+        }
+        if (syncingServices.has('calendar') && syncStatus.calendar_synced) {
+          newSyncingServices.delete('calendar')
+        }
+        if (syncingServices.has('hubspot') && syncStatus.hubspot_synced) {
+          newSyncingServices.delete('hubspot')
+        }
+        
+        if (newSyncingServices.size !== syncingServices.size) {
+          setSyncingServices(newSyncingServices)
+        }
+      }
+      
+      previousSyncStatus.current = syncStatus
     }
-  }, [syncStatus, updateUser])
+  }, [syncStatus, updateUser, syncingServices])
 
   const connectHubspot = async () => {
     const response = await authApi.getHubspotConnectUrl()
@@ -52,7 +75,8 @@ export default function SetupPrompt() {
   const syncGmail = useMutation({
     mutationFn: () => integrationApi.syncGmail(),
     onSuccess: () => {
-      // Polling will automatically update status every 3 seconds
+      // Mark as syncing and start polling
+      setSyncingServices(prev => new Set(prev).add('gmail'))
       refetch()
     },
   })
@@ -60,7 +84,8 @@ export default function SetupPrompt() {
   const syncCalendar = useMutation({
     mutationFn: () => integrationApi.syncCalendar(),
     onSuccess: () => {
-      // Polling will automatically update status every 3 seconds
+      // Mark as syncing and start polling
+      setSyncingServices(prev => new Set(prev).add('calendar'))
       refetch()
     },
   })
@@ -68,7 +93,8 @@ export default function SetupPrompt() {
   const syncHubspot = useMutation({
     mutationFn: () => integrationApi.syncHubspot(),
     onSuccess: () => {
-      // Polling will automatically update status every 3 seconds
+      // Mark as syncing and start polling
+      setSyncingServices(prev => new Set(prev).add('hubspot'))
       refetch()
     },
   })
@@ -86,27 +112,27 @@ export default function SetupPrompt() {
       id: 'gmail',
       title: 'Sync Gmail',
       description: 'Import your emails for the AI to understand your context',
-      completed: syncStatus?.gmail?.synced || user?.gmail_synced,
+      completed: syncStatus?.gmail_synced || user?.gmail_synced,
       action: () => syncGmail.mutate(),
-      loading: syncGmail.isPending,
+      loading: syncGmail.isPending || syncingServices.has('gmail'),
       disabled: false, // Always enabled since Google is already connected
     },
     {
       id: 'calendar',
       title: 'Sync Calendar',
       description: 'Import calendar events to help schedule meetings',
-      completed: syncStatus?.calendar?.synced || user?.calendar_synced,
+      completed: syncStatus?.calendar_synced || user?.calendar_synced,
       action: () => syncCalendar.mutate(),
-      loading: syncCalendar.isPending,
+      loading: syncCalendar.isPending || syncingServices.has('calendar'),
       disabled: false, // Always enabled since Google is already connected
     },
     {
       id: 'hubspot-sync',
       title: 'Sync Hubspot Data',
       description: 'Import contacts and notes from Hubspot',
-      completed: syncStatus?.hubspot?.synced || user?.hubspot_synced,
+      completed: syncStatus?.hubspot_synced || user?.hubspot_synced,
       action: () => syncHubspot.mutate(),
-      loading: syncHubspot.isPending,
+      loading: syncHubspot.isPending || syncingServices.has('hubspot'),
       disabled: !user?.hubspot_connected,
     },
   ]
