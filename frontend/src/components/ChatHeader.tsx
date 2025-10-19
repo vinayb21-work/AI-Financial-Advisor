@@ -1,8 +1,8 @@
-import { X, RefreshCw } from 'lucide-react'
+import { RefreshCw, User } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useMutation } from '@tanstack/react-query'
 import { integrationApi } from '@/lib/api'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface ChatHeaderProps {
   context: string
@@ -12,6 +12,28 @@ interface ChatHeaderProps {
 export default function ChatHeader({ context }: ChatHeaderProps) {
   const { user, logout } = useAuthStore()
   const [syncMessage, setSyncMessage] = useState('')
+  const [imageError, setImageError] = useState(false)
+  const [showUserMenu, setShowUserMenu] = useState(false)
+
+  // Reset image error when user changes
+  useEffect(() => {
+    setImageError(false)
+  }, [user?.picture])
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (!target.closest('#user-menu')) {
+        setShowUserMenu(false)
+      }
+    }
+    
+    if (showUserMenu) {
+      document.addEventListener('click', handleClickOutside)
+      return () => document.removeEventListener('click', handleClickOutside)
+    }
+  }, [showUserMenu])
 
   const syncAll = useMutation({
     mutationFn: async () => {
@@ -58,20 +80,90 @@ export default function ChatHeader({ context }: ChatHeaderProps) {
             {syncMessage || 'Sync'}
           </button>
 
-          {user?.picture && (
-            <img
-              src={user.picture}
-              alt={user.name}
-              className="h-8 w-8 rounded-full"
-            />
-          )}
-        <button
-          onClick={logout}
-          className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
-          title="Logout"
-        >
-          <X className="h-5 w-5" />
-        </button>
+          {/* Profile Picture or Fallback Icon */}
+          <div className="relative" id="user-menu">
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="relative flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 overflow-hidden transition hover:ring-2 hover:ring-gray-300" 
+              title={user?.name || user?.email || 'User'}
+            >
+              {user?.picture && !imageError ? (
+                <img
+                  src={user.picture}
+                  alt={user.name || 'User'}
+                  className="h-full w-full object-cover"
+                  onError={() => setImageError(true)}
+                  onLoad={() => setImageError(false)}
+                />
+              ) : (
+                <User className="h-4 w-4 text-gray-600" />
+              )}
+            </button>
+
+            {/* User Dropdown Menu */}
+            {showUserMenu && (
+              <div className="absolute right-0 mt-2 w-72 rounded-lg border border-gray-200 bg-white shadow-lg z-50">
+                <div className="p-4 border-b border-gray-200">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 overflow-hidden">
+                      {user?.picture && !imageError ? (
+                        <img
+                          src={user.picture}
+                          alt={user.name || 'User'}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <User className="h-5 w-5 text-gray-600" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {user?.name || 'User'}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">
+                        {user?.email}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-2">
+                  <div className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                    <div className="flex justify-between mb-1">
+                      <span className="font-medium">Gmail:</span>
+                      <span className={user?.gmail_synced ? 'text-green-600' : 'text-gray-400'}>
+                        {user?.gmail_synced ? '✓ Synced' : 'Not synced'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between mb-1">
+                      <span className="font-medium">Calendar:</span>
+                      <span className={user?.calendar_synced ? 'text-green-600' : 'text-gray-400'}>
+                        {user?.calendar_synced ? '✓ Synced' : 'Not synced'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Hubspot:</span>
+                      <span className={user?.hubspot_synced ? 'text-green-600' : 'text-gray-400'}>
+                        {user?.hubspot_synced ? '✓ Synced' : 'Not synced'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-2 border-t border-gray-200">
+                  <button
+                    onClick={() => {
+                      setShowUserMenu(false)
+                      logout()
+                    }}
+                    className="w-full rounded-lg px-3 py-2 text-left text-sm text-red-600 transition hover:bg-red-50"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
       </div>
     </div>
   )

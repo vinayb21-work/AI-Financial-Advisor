@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { chatApi } from '@/lib/api'
+import { chatApi, integrationApi } from '@/lib/api'
 import ChatHeader from '@/components/ChatHeader'
 import ChatSidebar from '@/components/ChatSidebar'
 import ChatMessages from '@/components/ChatMessages'
@@ -9,11 +9,32 @@ import SetupPrompt from '@/components/SetupPrompt'
 import { useAuthStore } from '@/store/authStore'
 
 export default function Chat() {
-  const { user } = useAuthStore()
+  const { user, updateUser } = useAuthStore()
   const [currentThreadId, setCurrentThreadId] = useState<string | null>(null)
   const [context, setContext] = useState<string>('all meetings')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const queryClient = useQueryClient()
+
+  // Poll sync status to keep frontend in sync with backend
+  const { data: syncStatus } = useQuery({
+    queryKey: ['syncStatus'],
+    queryFn: async () => {
+      const response = await integrationApi.getSyncStatus()
+      return response.data
+    },
+    refetchInterval: 30000, // Poll every 30 seconds
+  })
+
+  // Update user state when sync status changes
+  useEffect(() => {
+    if (syncStatus) {
+      updateUser({
+        gmail_synced: syncStatus.gmail?.synced || false,
+        calendar_synced: syncStatus.calendar?.synced || false,
+        hubspot_synced: syncStatus.hubspot?.synced || false,
+      })
+    }
+  }, [syncStatus, updateUser])
 
   // Fetch threads
   const { data: threads } = useQuery({
