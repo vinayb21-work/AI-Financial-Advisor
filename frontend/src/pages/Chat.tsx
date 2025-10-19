@@ -116,14 +116,12 @@ export default function Chat() {
     }
   }
 
-  // Check if setup is needed - all integrations must be connected and synced
-  const needsSetup =
-    !user?.hubspot_connected ||
-    !user?.gmail_synced ||
-    !user?.calendar_synced ||
-    !user?.hubspot_synced
+  // Check if initial setup is needed (first-time user)
+  // Only show setup prompt if user has NEVER completed initial setup
+  // Don't show it during re-syncing operations
+  const needsInitialSetup = !user?.hubspot_connected
 
-  if (needsSetup) {
+  if (needsInitialSetup) {
     return <SetupPrompt />
   }
 
