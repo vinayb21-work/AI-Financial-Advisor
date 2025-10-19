@@ -158,6 +158,74 @@ class CalendarService:
             logger.error(f"Error getting availability: {e}")
             return []
 
+    async def list_events(self, start_date: str, end_date: str) -> List[Dict[str, Any]]:
+        """List calendar events for a specific date range"""
+        try:
+            # Convert dates to datetime (always timezone-aware UTC)
+            if "T" not in start_date:
+                # Date only - set to start of day in UTC
+                start = datetime.fromisoformat(start_date).replace(
+                    hour=0, minute=0, second=0, tzinfo=timezone.utc
+                )
+            else:
+                start = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
+
+            if "T" not in end_date:
+                # Date only - set to end of day in UTC
+                end = datetime.fromisoformat(end_date).replace(
+                    hour=23, minute=59, second=59, tzinfo=timezone.utc
+                )
+            else:
+                end = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
+
+            logger.info(f"Listing events from {start.isoformat()} to {end.isoformat()}")
+
+            # Fetch events from Google Calendar
+            events_result = (
+                self.service.events()
+                .list(
+                    calendarId="primary",
+                    timeMin=start.replace(tzinfo=None).isoformat() + "Z",
+                    timeMax=end.replace(tzinfo=None).isoformat() + "Z",
+                    maxResults=100,
+                    singleEvents=True,
+                    orderBy="startTime",
+                )
+                .execute()
+            )
+
+            events = events_result.get("items", [])
+            logger.info(f"Found {len(events)} events in the specified date range")
+
+            formatted_events = []
+            for event in events:
+                # Parse start and end times
+                start_dt = event["start"].get("dateTime", event["start"].get("date"))
+                end_dt = event["end"].get("dateTime", event["end"].get("date"))
+
+                # Format attendees
+                attendees = []
+                for attendee in event.get("attendees", []):
+                    attendees.append(attendee.get("email", ""))
+
+                formatted_events.append(
+                    {
+                        "id": event["id"],
+                        "title": event.get("summary", "Untitled"),
+                        "description": event.get("description", ""),
+                        "start": start_dt,
+                        "end": end_dt,
+                        "attendees": attendees,
+                        "location": event.get("location", ""),
+                    }
+                )
+
+            return formatted_events
+
+        except Exception as e:
+            logger.error(f"Error listing calendar events: {e}")
+            return []
+
     async def create_event(
         self,
         title: str,

@@ -76,6 +76,27 @@ class ToolExecutor:
             {
                 "type": "function",
                 "function": {
+                    "name": "list_calendar_events",
+                    "description": "List ALL calendar events for a specific date range. Use this when user asks 'what events/meetings/appointments do I have today/tomorrow/this week'. Returns complete list of events from Google Calendar.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "start_date": {
+                                "type": "string",
+                                "description": "Start date in ISO format (YYYY-MM-DD)",
+                            },
+                            "end_date": {
+                                "type": "string",
+                                "description": "End date in ISO format (YYYY-MM-DD)",
+                            },
+                        },
+                        "required": ["start_date", "end_date"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
                     "name": "get_calendar_availability",
                     "description": "Get available time slots from calendar",
                     "parameters": {
@@ -311,6 +332,8 @@ class ToolExecutor:
                 return await self._send_email(args)
             elif function_name == "search_emails":
                 return await self._search_emails(args)
+            elif function_name == "list_calendar_events":
+                return await self._list_calendar_events(args)
             elif function_name == "get_calendar_availability":
                 return await self._get_calendar_availability(args)
             elif function_name == "create_calendar_event":
@@ -358,6 +381,17 @@ class ToolExecutor:
             query=args["query"], max_results=args.get("max_results", 10)
         )
         return {"emails": emails}
+
+    async def _list_calendar_events(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """List calendar events for a date range"""
+        events = await self.calendar_service.list_events(
+            start_date=args["start_date"], end_date=args["end_date"]
+        )
+        return {
+            "count": len(events),
+            "events": events,
+            "message": f"Found {len(events)} events in the specified date range",
+        }
 
     async def _get_calendar_availability(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """Get calendar availability"""

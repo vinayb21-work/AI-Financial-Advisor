@@ -40,7 +40,28 @@ class AIAgent:
             message_lower = message.lower()
             is_listing_query = any(
                 word in message_lower
-                for word in ["all", "list", "every", "what clients", "what contacts"]
+                for word in [
+                    "all",
+                    "list",
+                    "every",
+                    "what clients",
+                    "what contacts",
+                    "what events",
+                    "what meetings",
+                    "what appointments",
+                    "events scheduled",
+                    "meetings scheduled",
+                    "appointments scheduled",
+                    "events i have",
+                    "meetings i have",
+                    "appointments i have",
+                    "events for",
+                    "meetings for",
+                    "appointments for",
+                    "events today",
+                    "meetings today",
+                    "appointments today",
+                ]
             )
             rag_limit = 20 if is_listing_query else 5
 
@@ -622,9 +643,22 @@ CRITICAL - TOOL SELECTION:
 5. Execute actions immediately using tools. Don't just talk about what you'll do - DO IT.
 
 IMPORTANT - SHOWING RESULTS:
-When you call list_tasks or list_all_hubspot_contacts, you MUST show ALL results returned by the tool.
+When listing ANY data (tasks, contacts, calendar events, emails), you MUST show ALL results from the RAG context.
 DO NOT summarize or show only a few examples. The user wants to see the COMPLETE list.
-If there are 16 tasks, show all 16. If there are 100 contacts, show all 100.
+If there are 16 tasks, show all 16. If there are 4 calendar events, show all 4. If there are 100 contacts, show all 100.
+
+CRITICAL - CALENDAR EVENTS:
+When the user asks "What events/meetings/appointments do I have today?" or similar:
+- IMMEDIATELY call list_calendar_events with the appropriate date range (e.g., today's date as both start_date and end_date)
+- DO NOT rely solely on RAG context for calendar events - RAG is incomplete
+- Use list_calendar_events to get the complete, accurate list from Google Calendar
+- Show ALL events returned by the tool
+- Format each event clearly with time, attendees, and description
+
+Example:
+User: "What events do I have today?"
+✅ CORRECT: Call list_calendar_events(start_date="2025-10-19", end_date="2025-10-19") and show all results
+❌ WRONG: Only show events from RAG context (incomplete)
 
 IMPORTANT - LISTING vs UPDATING TASKS:
 There is a BIG difference between LISTING and UPDATING:
