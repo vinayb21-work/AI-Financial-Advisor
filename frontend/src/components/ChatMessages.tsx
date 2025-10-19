@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react'
-import { Loader2, User, Bot, Calendar, Users } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Loader2, User, Bot, ChevronDown, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface Message {
@@ -18,10 +18,24 @@ interface ChatMessagesProps {
 
 export default function ChatMessages({ messages, loading }: ChatMessagesProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
+
+  const toggleToolExpansion = (messageId: string, toolIndex: number) => {
+    const key = `${messageId}-${toolIndex}`
+    setExpandedTools(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(key)) {
+        newSet.delete(key)
+      } else {
+        newSet.add(key)
+      }
+      return newSet
+    })
+  }
 
   // Format conversation start time
   const formatConversationTime = (timestamp: string) => {
@@ -40,10 +54,10 @@ export default function ChatMessages({ messages, loading }: ChatMessagesProps) {
     } else if (dateOnly.getTime() === yesterdayOnly.getTime()) {
       return `Yesterday at ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`
     } else {
-      const options: Intl.DateTimeFormatOptions = { 
-        month: 'short', 
+      const options: Intl.DateTimeFormatOptions = {
+        month: 'short',
         day: 'numeric',
-        hour: 'numeric', 
+        hour: 'numeric',
         minute: '2-digit',
         hour12: true
       }
@@ -108,24 +122,51 @@ export default function ChatMessages({ messages, loading }: ChatMessagesProps) {
               {/* Render tool results if any */}
               {message.tool_results && message.tool_results.length > 0 && (
                 <div className="mt-3 space-y-2">
-                  {message.tool_results.map((result: any, idx: number) => (
-                    <div
-                      key={idx}
-                      className="rounded-lg border border-gray-200 bg-gray-50 p-3"
-                    >
-                      <p className="text-xs font-medium text-gray-700">
-                        🔧 {result.function_name || 'Tool'}
-                      </p>
-                      <p className="mt-0.5 text-xs text-gray-500">
-                        {result.tool_call_id}
-                      </p>
-                      {result.result.status && (
-                        <p className="mt-1 text-xs text-gray-700">
-                          Status: {result.result.status}
-                        </p>
-                      )}
-                    </div>
-                  ))}
+                  {message.tool_results.map((result: any, idx: number) => {
+                    const toolKey = `${message.id}-${idx}`
+                    const isExpanded = expandedTools.has(toolKey)
+
+                    return (
+                      <div
+                        key={idx}
+                        className="rounded-lg border border-gray-200 bg-gray-50 overflow-hidden"
+                      >
+                        <button
+                          onClick={() => toggleToolExpansion(message.id, idx)}
+                          className="w-full p-3 text-left hover:bg-gray-100 transition-colors flex items-start gap-2"
+                        >
+                          <div className="flex-shrink-0 mt-0.5">
+                            {isExpanded ? (
+                              <ChevronDown className="h-4 w-4 text-gray-500" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4 text-gray-500" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-gray-700">
+                              🔧 {result.function_name || 'Tool'}
+                            </p>
+                            <p className="mt-0.5 text-xs text-gray-500 truncate">
+                              {result.tool_call_id}
+                            </p>
+                            {result.result.status && (
+                              <p className="mt-1 text-xs text-gray-700">
+                                Status: {result.result.status}
+                              </p>
+                            )}
+                          </div>
+                        </button>
+
+                        {isExpanded && (
+                          <div className="border-t border-gray-200 bg-gray-900 p-3">
+                            <pre className="text-xs text-gray-100 overflow-x-auto whitespace-pre-wrap break-words">
+                              {JSON.stringify(result.result, null, 2)}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>
