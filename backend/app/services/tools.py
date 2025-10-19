@@ -12,16 +12,17 @@ from app.services.hubspot_service import HubspotService
 
 logger = logging.getLogger(__name__)
 
+
 class ToolExecutor:
     """Execute tools called by the AI agent"""
-    
+
     def __init__(self, db: AsyncSession, user: User):
         self.db = db
         self.user = user
         self.gmail_service = GmailService(user)
         self.calendar_service = CalendarService(user)
         self.hubspot_service = HubspotService(user, db)
-    
+
     def get_tools_definition(self) -> List[Dict[str, Any]]:
         """Get OpenAI function calling tools definition"""
         return [
@@ -35,20 +36,20 @@ class ToolExecutor:
                         "properties": {
                             "to": {
                                 "type": "string",
-                                "description": "Email address of recipient"
+                                "description": "Email address of recipient",
                             },
                             "subject": {
                                 "type": "string",
-                                "description": "Email subject"
+                                "description": "Email subject",
                             },
                             "body": {
                                 "type": "string",
-                                "description": "Email body content"
-                            }
+                                "description": "Email body content",
+                            },
                         },
-                        "required": ["to", "subject", "body"]
-                    }
-                }
+                        "required": ["to", "subject", "body"],
+                    },
+                },
             },
             {
                 "type": "function",
@@ -60,17 +61,17 @@ class ToolExecutor:
                         "properties": {
                             "query": {
                                 "type": "string",
-                                "description": "Search query (e.g., 'from:john@example.com', 'subject:meeting')"
+                                "description": "Search query (e.g., 'from:john@example.com', 'subject:meeting')",
                             },
                             "max_results": {
                                 "type": "integer",
                                 "description": "Maximum number of results to return",
-                                "default": 10
-                            }
+                                "default": 10,
+                            },
                         },
-                        "required": ["query"]
-                    }
-                }
+                        "required": ["query"],
+                    },
+                },
             },
             {
                 "type": "function",
@@ -82,16 +83,16 @@ class ToolExecutor:
                         "properties": {
                             "start_date": {
                                 "type": "string",
-                                "description": "Start date in ISO format (YYYY-MM-DD)"
+                                "description": "Start date in ISO format (YYYY-MM-DD)",
                             },
                             "end_date": {
                                 "type": "string",
-                                "description": "End date in ISO format (YYYY-MM-DD)"
-                            }
+                                "description": "End date in ISO format (YYYY-MM-DD)",
+                            },
                         },
-                        "required": ["start_date", "end_date"]
-                    }
-                }
+                        "required": ["start_date", "end_date"],
+                    },
+                },
             },
             {
                 "type": "function",
@@ -101,31 +102,28 @@ class ToolExecutor:
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "title": {
-                                "type": "string",
-                                "description": "Event title"
-                            },
+                            "title": {"type": "string", "description": "Event title"},
                             "start_time": {
                                 "type": "string",
-                                "description": "Start time in ISO format"
+                                "description": "Start time in ISO format",
                             },
                             "end_time": {
                                 "type": "string",
-                                "description": "End time in ISO format"
+                                "description": "End time in ISO format",
                             },
                             "attendees": {
                                 "type": "array",
                                 "items": {"type": "string"},
-                                "description": "List of attendee email addresses"
+                                "description": "List of attendee email addresses",
                             },
                             "description": {
                                 "type": "string",
-                                "description": "Event description"
-                            }
+                                "description": "Event description",
+                            },
                         },
-                        "required": ["title", "start_time", "end_time"]
-                    }
-                }
+                        "required": ["title", "start_time", "end_time"],
+                    },
+                },
             },
             {
                 "type": "function",
@@ -137,12 +135,12 @@ class ToolExecutor:
                         "properties": {
                             "query": {
                                 "type": "string",
-                                "description": "Search query (name, email, company)"
+                                "description": "Search query (name, email, company)",
                             }
                         },
-                        "required": ["query"]
-                    }
-                }
+                        "required": ["query"],
+                    },
+                },
             },
             {
                 "type": "function",
@@ -155,11 +153,11 @@ class ToolExecutor:
                             "limit": {
                                 "type": "integer",
                                 "description": "Maximum number of contacts to return",
-                                "default": 100
+                                "default": 100,
                             }
-                        }
-                    }
-                }
+                        },
+                    },
+                },
             },
             {
                 "type": "function",
@@ -171,28 +169,22 @@ class ToolExecutor:
                         "properties": {
                             "email": {
                                 "type": "string",
-                                "description": "Contact email address"
+                                "description": "Contact email address",
                             },
                             "firstname": {
                                 "type": "string",
-                                "description": "First name"
+                                "description": "First name",
                             },
-                            "lastname": {
-                                "type": "string",
-                                "description": "Last name"
-                            },
+                            "lastname": {"type": "string", "description": "Last name"},
                             "company": {
                                 "type": "string",
-                                "description": "Company name"
+                                "description": "Company name",
                             },
-                            "phone": {
-                                "type": "string",
-                                "description": "Phone number"
-                            }
+                            "phone": {"type": "string", "description": "Phone number"},
                         },
-                        "required": ["email"]
-                    }
-                }
+                        "required": ["email"],
+                    },
+                },
             },
             {
                 "type": "function",
@@ -204,16 +196,13 @@ class ToolExecutor:
                         "properties": {
                             "contact_email": {
                                 "type": "string",
-                                "description": "Contact email address"
+                                "description": "Contact email address",
                             },
-                            "note": {
-                                "type": "string",
-                                "description": "Note content"
-                            }
+                            "note": {"type": "string", "description": "Note content"},
                         },
-                        "required": ["contact_email", "note"]
-                    }
-                }
+                        "required": ["contact_email", "note"],
+                    },
+                },
             },
             {
                 "type": "function",
@@ -225,20 +214,20 @@ class ToolExecutor:
                         "properties": {
                             "description": {
                                 "type": "string",
-                                "description": "Task description"
+                                "description": "Task description",
                             },
                             "context": {
                                 "type": "object",
-                                "description": "Context needed to complete the task"
+                                "description": "Context needed to complete the task",
                             },
                             "waiting_for": {
                                 "type": "string",
-                                "description": "What the task is waiting for (e.g., 'email response')"
-                            }
+                                "description": "What the task is waiting for (e.g., 'email response')",
+                            },
                         },
-                        "required": ["description"]
-                    }
-                }
+                        "required": ["description"],
+                    },
+                },
             },
             {
                 "type": "function",
@@ -250,20 +239,71 @@ class ToolExecutor:
                         "properties": {
                             "instruction": {
                                 "type": "string",
-                                "description": "The instruction to remember"
+                                "description": "The instruction to remember",
                             },
                             "trigger_type": {
                                 "type": "string",
                                 "enum": ["gmail", "calendar", "hubspot"],
-                                "description": "What type of event should trigger this instruction"
+                                "description": "What type of event should trigger this instruction",
+                            },
+                        },
+                        "required": ["instruction", "trigger_type"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "list_tasks",
+                    "description": "List all tasks from the database. Use this when user asks for 'pending tasks', 'my tasks', 'what tasks do I have', etc.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "status": {
+                                "type": "string",
+                                "enum": [
+                                    "pending",
+                                    "in_progress",
+                                    "waiting",
+                                    "completed",
+                                    "failed",
+                                ],
+                                "description": "Filter tasks by status (optional, defaults to pending). Valid statuses: pending, in_progress, waiting, completed, failed",
                             }
                         },
-                        "required": ["instruction", "trigger_type"]
-                    }
-                }
-            }
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "update_task",
+                    "description": "Update a task's status. Use this to mark tasks as completed, in_progress, waiting, or failed.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "task_id": {
+                                "type": "string",
+                                "description": "The ID of the task to update",
+                            },
+                            "status": {
+                                "type": "string",
+                                "enum": [
+                                    "pending",
+                                    "in_progress",
+                                    "waiting",
+                                    "completed",
+                                    "failed",
+                                ],
+                                "description": "The new status for the task",
+                            },
+                        },
+                        "required": ["task_id", "status"],
+                    },
+                },
+            },
         ]
-    
+
     async def execute(self, function_name: str, args: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a tool function"""
         try:
@@ -287,43 +327,45 @@ class ToolExecutor:
                 return await self._create_task(args)
             elif function_name == "save_ongoing_instruction":
                 return await self._save_ongoing_instruction(args)
+            elif function_name == "list_tasks":
+                return await self._list_tasks(args)
+            elif function_name == "update_task":
+                return await self._update_task(args)
             else:
                 return {"error": f"Unknown function: {function_name}"}
         except Exception as e:
             logger.error(f"Error executing {function_name}: {e}")
             return {"error": str(e)}
-    
+
     async def _send_email(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """Send an email"""
         logger.info(f"[SEND_EMAIL] Attempting to send email to: {args.get('to')}")
         logger.info(f"[SEND_EMAIL] Subject: {args.get('subject')}")
         logger.info(f"[SEND_EMAIL] Body preview: {args.get('body', '')[:100]}...")
-        
+
         result = await self.gmail_service.send_email(
-            to=args["to"],
-            subject=args["subject"],
-            body=args["body"]
+            to=args["to"], subject=args["subject"], body=args["body"]
         )
-        
-        logger.info(f"[SEND_EMAIL] ✅ SUCCESS - Email sent to {args['to']}, message_id: {result}")
+
+        logger.info(
+            f"[SEND_EMAIL] ✅ SUCCESS - Email sent to {args['to']}, message_id: {result}"
+        )
         return {"status": "sent", "message_id": result, "sent_to": args["to"]}
-    
+
     async def _search_emails(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """Search emails"""
         emails = await self.gmail_service.search_emails(
-            query=args["query"],
-            max_results=args.get("max_results", 10)
+            query=args["query"], max_results=args.get("max_results", 10)
         )
         return {"emails": emails}
-    
+
     async def _get_calendar_availability(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """Get calendar availability"""
         availability = await self.calendar_service.get_availability(
-            start_date=args["start_date"],
-            end_date=args["end_date"]
+            start_date=args["start_date"], end_date=args["end_date"]
         )
         return {"availability": availability}
-    
+
     async def _create_calendar_event(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """Create calendar event"""
         event = await self.calendar_service.create_event(
@@ -331,15 +373,15 @@ class ToolExecutor:
             start_time=args["start_time"],
             end_time=args["end_time"],
             attendees=args.get("attendees", []),
-            description=args.get("description", "")
+            description=args.get("description", ""),
         )
         return {"status": "created", "event_id": event["id"]}
-    
+
     async def _search_hubspot_contacts(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """Search Hubspot contacts"""
         contacts = await self.hubspot_service.search_contacts(args["query"])
         return {"contacts": contacts}
-    
+
     async def _list_all_hubspot_contacts(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """List all Hubspot contacts"""
         limit = args.get("limit", 100)
@@ -347,22 +389,21 @@ class ToolExecutor:
         return {
             "contacts": contacts,
             "total": len(contacts),
-            "message": f"Found {len(contacts)} total contacts in Hubspot"
+            "message": f"Found {len(contacts)} total contacts in Hubspot",
         }
-    
+
     async def _create_hubspot_contact(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """Create Hubspot contact"""
         contact = await self.hubspot_service.create_contact(args)
         return {"status": "created", "contact_id": contact["id"]}
-    
+
     async def _add_hubspot_note(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """Add note to Hubspot contact"""
         note = await self.hubspot_service.add_note(
-            contact_email=args["contact_email"],
-            note=args["note"]
+            contact_email=args["contact_email"], note=args["note"]
         )
         return {"status": "added", "note_id": note["id"]}
-    
+
     async def _create_task(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """Create a task"""
         task = Task(
@@ -370,25 +411,119 @@ class ToolExecutor:
             description=args["description"],
             context=args.get("context"),
             waiting_for=args.get("waiting_for"),
-            status=TaskStatus.PENDING
+            status=TaskStatus.PENDING,
         )
         self.db.add(task)
         await self.db.commit()
         await self.db.refresh(task)
-        
+
         return {"status": "created", "task_id": str(task.id)}
-    
+
     async def _save_ongoing_instruction(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """Save an ongoing instruction"""
         instruction = OngoingInstruction(
             user_id=self.user.id,
             instruction=args["instruction"],
             trigger_type=args["trigger_type"],
-            active=True
+            active=True,
         )
         self.db.add(instruction)
         await self.db.commit()
         await self.db.refresh(instruction)
-        
+
         return {"status": "saved", "instruction_id": str(instruction.id)}
 
+    async def _list_tasks(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """List tasks from the database"""
+        from sqlalchemy import select
+
+        # Build query
+        query = select(Task).where(Task.user_id == self.user.id)
+
+        # Filter by status if provided
+        status_filter = args.get("status", "pending")
+        if status_filter:
+            try:
+                status_enum = TaskStatus[status_filter.upper()]
+                query = query.where(Task.status == status_enum)
+            except KeyError:
+                # Invalid status - return helpful error
+                valid_statuses = [s.value for s in TaskStatus]
+                return {
+                    "error": f"Invalid status '{status_filter}'. Valid statuses are: {', '.join(valid_statuses)}",
+                    "tasks": [],
+                    "count": 0,
+                }
+
+        # Order by creation date (newest first)
+        query = query.order_by(Task.created_at.desc())
+
+        # Execute query
+        result = await self.db.execute(query)
+        tasks = result.scalars().all()
+
+        # Format tasks for return
+        tasks_list = []
+        for task in tasks:
+            tasks_list.append(
+                {
+                    "id": str(task.id),
+                    "description": task.description,
+                    "status": task.status.value,
+                    "waiting_for": task.waiting_for,
+                    "context": task.context,
+                    "created_at": (
+                        task.created_at.isoformat() if task.created_at else None
+                    ),
+                    "updated_at": (
+                        task.updated_at.isoformat() if task.updated_at else None
+                    ),
+                }
+            )
+
+        return {"tasks": tasks_list, "count": len(tasks_list)}
+
+    async def _update_task(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Update a task's status"""
+        from sqlalchemy import select
+        from datetime import datetime
+        from uuid import UUID
+
+        task_id_str = args["task_id"]
+        new_status = TaskStatus[args["status"].upper()]
+
+        # Convert task_id to UUID
+        try:
+            task_id = UUID(task_id_str)
+        except (ValueError, AttributeError) as e:
+            return {"error": f"Invalid task ID format: {task_id_str}"}
+
+        # Fetch the task
+        result = await self.db.execute(
+            select(Task).where(
+                Task.id == task_id,
+                Task.user_id == self.user.id,  # Ensure user owns the task
+            )
+        )
+        task = result.scalar_one_or_none()
+
+        if not task:
+            return {
+                "error": f"Task {task_id_str} not found or you don't have permission to update it"
+            }
+
+        # Update status
+        task.status = new_status
+        task.updated_at = datetime.utcnow()
+
+        # Set completed_at if marking as completed
+        if new_status == TaskStatus.COMPLETED:
+            task.completed_at = datetime.utcnow()
+
+        await self.db.commit()
+
+        return {
+            "status": "updated",
+            "task_id": str(task.id),
+            "new_status": new_status.value,
+        }
