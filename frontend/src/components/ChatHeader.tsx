@@ -1,7 +1,7 @@
 import { RefreshCw, User } from 'lucide-react'
-import { useAuthStore } from '../store/authStore'
+import { useAuthStore } from '../store/authStore.ts'
 import { useMutation } from '@tanstack/react-query'
-import { integrationApi } from '../lib/api'
+import { integrationApi } from '../lib/api.ts'
 import { useState, useEffect } from 'react'
 
 interface ChatHeaderProps {

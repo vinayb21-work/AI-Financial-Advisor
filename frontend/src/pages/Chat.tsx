@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { chatApi, integrationApi } from '../lib/api'
-import ChatHeader from '../components/ChatHeader'
-import ChatSidebar from '../components/ChatSidebar'
-import ChatMessages from '../components/ChatMessages'
-import ChatInput from '../components/ChatInput'
-import SetupPrompt from '../components/SetupPrompt'
-import { useAuthStore } from '../store/authStore'
+import { chatApi, integrationApi } from '../lib/api.ts'
+import ChatHeader from '../components/ChatHeader.tsx'
+import ChatSidebar from '../components/ChatSidebar.tsx'
+import ChatMessages from '../components/ChatMessages.tsx'
+import ChatInput from '../components/ChatInput.tsx'
+import SetupPrompt from '../components/SetupPrompt.tsx'
+import { useAuthStore } from '../store/authStore.ts'
 
 export default function Chat() {
   const { user, updateUser } = useAuthStore()
