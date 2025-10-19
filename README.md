@@ -12,17 +12,17 @@ An intelligent AI agent for financial advisors that integrates with Gmail, Googl
 - 💾 **RAG System** - Vector database (pgvector) for semantic search across emails and CRM data
 - 🧠 **Memory System** - Remembers ongoing instructions and task context
 - 🎨 **Modern Chat UI** - Clean, responsive interface matching the provided design
-- ⚡ **Real-time Sync** - Background tasks for syncing data from integrations
-- 🔄 **Webhook Support** - Proactive actions based on events from Gmail, Calendar, and Hubspot
+- ⚡ **Real-time Sync** - Manual sync and polling for data from integrations
+- 🔄 **Proactive Agent** - Automatic actions based on ongoing instructions and new events
 
 ## Tech Stack
 
 ### Backend
 - **Framework**: FastAPI (Python)
 - **Database**: PostgreSQL with pgvector extension
-- **AI**: OpenAI GPT-4 with function calling
+- **AI**: OpenAI GPT-4o with function calling
 - **Authentication**: Google OAuth 2.0, Hubspot OAuth
-- **Task Queue**: Redis + Celery (optional)
+- **Background Tasks**: APScheduler for Gmail polling
 - **ORM**: SQLAlchemy (async)
 
 ### Frontend
@@ -36,9 +36,8 @@ An intelligent AI agent for financial advisors that integrates with Gmail, Googl
 ## Prerequisites
 
 - Python 3.11+
-- Node.js 18+
+- Node.js 20+
 - PostgreSQL 15+ with pgvector extension
-- Redis (optional, for background tasks)
 - OpenAI API key
 - Google Cloud Project with OAuth credentials
 - Hubspot Developer Account
@@ -102,7 +101,6 @@ HUBSPOT_CLIENT_SECRET=your_hubspot_client_secret
 HUBSPOT_REDIRECT_URI=http://localhost:8000/auth/hubspot/callback
 SECRET_KEY=your_secret_key_here
 FRONTEND_URL=http://localhost:3000
-REDIS_URL=redis://localhost:6379/0
 ```
 
 ### 5. Set Up Database
@@ -143,18 +141,20 @@ VITE_API_URL=http://localhost:8000
 
 ### 7. Run the Application
 
-#### Option 1: Using Docker Compose (Recommended)
+#### Option 1: Using Docker (Recommended for Database)
 
 ```bash
-# From project root
-docker-compose up
+# Start PostgreSQL with pgvector
+docker run -d \
+  --name ai-advisor-db \
+  -e POSTGRES_USER=ai_advisor \
+  -e POSTGRES_PASSWORD=your_password \
+  -e POSTGRES_DB=ai_advisor \
+  -p 5432:5432 \
+  ankane/pgvector
 ```
 
-This will start:
-- PostgreSQL with pgvector on port 5432
-- Redis on port 6379
-- Backend API on port 8000
-- Frontend on port 3000
+For detailed local setup instructions, see [LOCAL_SETUP.md](./LOCAL_SETUP.md)
 
 #### Option 2: Run Manually
 
@@ -213,44 +213,43 @@ npm run dev
 
 ## Deployment
 
-### Deploy to Render
+This application is deployed on Render:
 
-1. Push your code to GitHub
-2. Go to [Render Dashboard](https://dashboard.render.com/)
-3. Click "New +" and select "Blueprint"
-4. Connect your GitHub repository
-5. Render will automatically detect `render.yaml` and create:
-   - PostgreSQL database
-   - Redis instance
-   - Backend web service
-   - Frontend static site
+- **Frontend**: [https://ai-advisor-frontend-59v2.onrender.com](https://ai-advisor-frontend-59v2.onrender.com)
+- **Backend**: [https://ai-advisor-backend-02ky.onrender.com](https://ai-advisor-backend-02ky.onrender.com)
 
-6. Add environment variables in Render dashboard:
-   - OPENAI_API_KEY
-   - GOOGLE_CLIENT_ID
-   - GOOGLE_CLIENT_SECRET
-   - HUBSPOT_CLIENT_ID
-   - HUBSPOT_CLIENT_SECRET
-   - Update redirect URIs to use your production URLs
+### Deploy Your Own Instance to Render
 
-### Deploy to Fly.io
+1. **Push your code to GitHub**
 
-```bash
-# Install Fly CLI
-curl -L https://fly.io/install.sh | sh
+2. **Create Environment Group** in Render Dashboard:
+   - Name: `ai-advisor-secrets`
+   - Add all required environment variables (see Prerequisites)
 
-# Login to Fly
-fly auth login
+3. **Create PostgreSQL Database**:
+   - Name: `ai-advisor-db`
+   - PostgreSQL Version: 15
 
-# Deploy backend
-cd backend
-fly launch
-fly secrets set OPENAI_API_KEY=xxx GOOGLE_CLIENT_ID=xxx ...
+4. **Deploy from render.yaml**:
+   - Go to [Render Dashboard](https://dashboard.render.com/)
+   - Click "New +" → "Blueprint"
+   - Connect your GitHub repository
+   - Render will detect `render.yaml` and create all services
 
-# Deploy frontend
-cd ../frontend
-fly launch
-```
+5. **Configure Frontend Static Site**:
+   - After creation, go to frontend service settings
+   - Navigate to "Redirects/Rewrites" tab
+   - Add rule:
+     - Type: `Rewrite`
+     - Source: `/*`
+     - Destination: `/index.html`
+     - Status: `200`
+
+6. **Update OAuth Redirect URIs**:
+   - Google Cloud Console: Update redirect URI to your backend URL
+   - Hubspot Developer: Update redirect URI to your backend URL
+
+For detailed deployment instructions, see the deployment guide in the repository.
 
 ## Architecture
 
@@ -301,6 +300,7 @@ fly launch
 - `POST /chat/message` - Send message to AI agent
 - `GET /chat/threads` - Get all conversation threads
 - `GET /chat/threads/{id}` - Get specific thread with messages
+- `PATCH /chat/threads/{id}` - Update thread (rename)
 - `DELETE /chat/threads/{id}` - Delete thread
 
 ### Integrations
