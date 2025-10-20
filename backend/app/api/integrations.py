@@ -174,6 +174,7 @@ async def sync_calendar_background(user_id: str):
                     continue
 
             # Update user sync status
+            is_first_sync = not user.calendar_synced
             user.calendar_synced = True
             user.last_calendar_sync = datetime.utcnow()
             await db.commit()
@@ -181,6 +182,21 @@ async def sync_calendar_background(user_id: str):
             logger.info(
                 f"Calendar sync completed for user {user_id} - processed {len(events)} events"
             )
+            
+            # Auto-setup webhook on first sync
+            if is_first_sync:
+                try:
+                    from app.services.webhook_manager import WebhookManager
+                    webhook_manager = WebhookManager(db, user)
+                    webhook_result = await webhook_manager.setup_calendar_webhook()
+                    
+                    if webhook_result.get('status') == 'success':
+                        logger.info(f"Calendar webhook auto-setup successful for user {user_id}")
+                    else:
+                        logger.warning(f"Calendar webhook auto-setup failed for user {user_id}: {webhook_result}")
+                except Exception as e:
+                    logger.error(f"Error auto-setting up calendar webhook: {e}")
+                    # Don't fail the sync if webhook setup fails
 
         except Exception as e:
             logger.error(f"Error syncing Calendar: {e}")
