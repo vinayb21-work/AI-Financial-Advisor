@@ -53,6 +53,7 @@ async def shutdown_event():
     logger.info("Gmail poller stopped")
 
 @app.get("/")
+@app.head("/")
 async def root():
     return {
         "message": "AI Financial Advisor Agent API",
@@ -61,7 +62,9 @@ async def root():
     }
 
 @app.get("/health")
+@app.head("/health")
 async def health_check():
+    """Health check endpoint for monitoring services like UptimeRobot"""
     return {"status": "healthy"}
 
 if __name__ == "__main__":
