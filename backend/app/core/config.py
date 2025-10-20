@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     # App Config
     SECRET_KEY: str
     FRONTEND_URL: str = "http://localhost:3000"
-    BACKEND_URL: str = "http://localhost:8000"
+    BACKEND_URL: str = "https://ai-advisor-backend-02ky.onrender.com"
     
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
