@@ -113,16 +113,32 @@ class AIAgent:
             tools = self.tool_executor.get_tools_definition()
 
             # Call OpenAI with function calling
-            response = await self.client.chat.completions.create(
-                model="gpt-4o",
-                messages=messages,
-                tools=tools,
-                tool_choice="auto",
-                temperature=0.3,  # Lower temperature for factual, consistent responses
-                max_tokens=2000,
-            )
-
-            assistant_message = response.choices[0].message
+            try:
+                response = await self.client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=messages,
+                    tools=tools,
+                    tool_choice="auto",
+                    temperature=0.3,  # Lower temperature for factual, consistent responses
+                    max_tokens=2000,
+                )
+                assistant_message = response.choices[0].message
+            except Exception as e:
+                error_message = str(e)
+                
+                # Check if it's Azure content filter error
+                if "content management policy" in error_message.lower() or "content_policy" in error_message.lower():
+                    logger.warning(f"Azure content filter triggered for query: {message[:100]}...")
+                    
+                    # Return a helpful message to the user
+                    return {
+                        "response": "I apologize, but there was a content filtering issue with that query. This is a limitation of the AI provider's content policy. Could you try rephrasing your question slightly differently? For example, instead of asking about specific personal details, try asking 'What topics have been discussed in recent emails?'",
+                        "tool_calls": [],
+                        "tool_results": []
+                    }
+                else:
+                    # Re-raise other errors
+                    raise
 
             # VALIDATION: Check if AI claims to have done actions but didn't call tools
             content_lower = (assistant_message.content or "").lower()
