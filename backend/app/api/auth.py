@@ -6,6 +6,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 import requests
+import logging
 from datetime import datetime, timedelta
 
 from app.core.config import settings
@@ -13,6 +14,8 @@ from app.core.database import get_db
 from app.core.security import create_access_token
 from app.models.user import User
 from app.api.dependencies import get_current_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -113,8 +116,18 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/hubspot/connect")
-async def hubspot_connect():
+async def hubspot_connect(current_user: User = Depends(get_current_user)):
     """Initiate Hubspot OAuth flow"""
+    import secrets
+    
+    # Generate a secure state token containing the user ID
+    state = secrets.token_urlsafe(32)
+    
+    # Store state in user session or cache (for now, encode user_id in state)
+    # In production, you should store this in Redis/cache
+    # For simplicity, we'll use a simple format: state_user_id
+    state_with_user = f"{state}_{current_user.id}"
+    
     # Define all required scopes for the application
     scopes = [
         # Contact scopes
@@ -132,14 +145,15 @@ async def hubspot_connect():
         # Timeline and engagement scopes
         "timeline",
     ]
-
+    
     scope_string = "%20".join(scopes)
-
+    
     auth_url = (
         f"https://app.hubspot.com/oauth/authorize"
         f"?client_id={settings.HUBSPOT_CLIENT_ID}"
         f"&redirect_uri={settings.HUBSPOT_REDIRECT_URI}"
         f"&scope={scope_string}"
+        f"&state={state_with_user}"
     )
     
     return {"authorization_url": auth_url}
@@ -161,9 +175,40 @@ async def hubspot_disconnect(
     return {"message": "Hubspot disconnected successfully"}
 
 @router.get("/hubspot/callback")
-async def hubspot_callback(code: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def hubspot_callback(
+    code: str, 
+    state: str,
+    request: Request, 
+    db: AsyncSession = Depends(get_db)
+):
     """Handle Hubspot OAuth callback"""
     try:
+        # Extract user ID from state parameter
+        # State format: {random_token}_{user_id}
+        if not state or '_' not in state:
+            logger.error(f"Invalid state parameter: {state}")
+            return RedirectResponse(
+                url=f"{settings.FRONTEND_URL}/?hubspot=error&message=Invalid+state+parameter"
+            )
+        
+        try:
+            user_id = state.split('_')[-1]
+        except Exception as e:
+            logger.error(f"Error parsing state parameter: {e}")
+            return RedirectResponse(
+                url=f"{settings.FRONTEND_URL}/?hubspot=error&message=Invalid+state+format"
+            )
+        
+        # Get the specific user who initiated the OAuth flow
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            logger.error(f"User not found for ID: {user_id}")
+            return RedirectResponse(
+                url=f"{settings.FRONTEND_URL}/?hubspot=error&message=User+not+found"
+            )
+        
         # Exchange code for access token
         token_url = "https://api.hubapi.com/oauth/v1/token"
         data = {
@@ -174,17 +219,17 @@ async def hubspot_callback(code: str, request: Request, db: AsyncSession = Depen
             "code": code
         }
         
+        logger.info(f"Exchanging code for token for user: {user.email}")
         response = requests.post(token_url, data=data)
+        
+        if response.status_code != 200:
+            logger.error(f"HubSpot token exchange failed: {response.status_code} - {response.text}")
+            return RedirectResponse(
+                url=f"{settings.FRONTEND_URL}/?hubspot=error&message=Token+exchange+failed"
+            )
+        
         response.raise_for_status()
         token_data = response.json()
-        
-        # Get user from request (you'd extract this from JWT in real implementation)
-        # For now, we'll get the most recent user (this should be improved)
-        result = await db.execute(select(User).order_by(User.created_at.desc()).limit(1))
-        user = result.scalar_one_or_none()
-        
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
         
         # Update user with Hubspot tokens
         user.hubspot_access_token = token_data['access_token']
@@ -194,11 +239,21 @@ async def hubspot_callback(code: str, request: Request, db: AsyncSession = Depen
         
         await db.commit()
         
+        logger.info(f"HubSpot connected successfully for user: {user.email}")
+        
         # Redirect to frontend
         return RedirectResponse(url=f"{settings.FRONTEND_URL}/?hubspot=connected")
         
+    except requests.exceptions.HTTPError as e:
+        logger.error(f"HubSpot API error: {e}")
+        return RedirectResponse(
+            url=f"{settings.FRONTEND_URL}/?hubspot=error&message=API+error"
+        )
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Unexpected error in HubSpot callback: {e}")
+        return RedirectResponse(
+            url=f"{settings.FRONTEND_URL}/?hubspot=error&message=Unexpected+error"
+        )
 
 @router.get("/me")
 async def get_current_user(request: Request, db: AsyncSession = Depends(get_db)):
