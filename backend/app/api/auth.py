@@ -115,11 +115,31 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
 @router.get("/hubspot/connect")
 async def hubspot_connect():
     """Initiate Hubspot OAuth flow"""
+    # Define all required scopes for the application
+    scopes = [
+        # Contact scopes
+        "crm.objects.contacts.read",
+        "crm.objects.contacts.write",
+        "crm.schemas.contacts.read",
+        # Company scopes
+        "crm.objects.companies.read",
+        "crm.objects.companies.write",
+        # Custom object scopes
+        "crm.objects.custom.read",
+        "crm.objects.custom.write",
+        # Email and engagement scopes
+        "sales-email-read",
+        # Timeline and engagement scopes
+        "timeline",
+    ]
+
+    scope_string = "%20".join(scopes)
+
     auth_url = (
         f"https://app.hubspot.com/oauth/authorize"
         f"?client_id={settings.HUBSPOT_CLIENT_ID}"
         f"&redirect_uri={settings.HUBSPOT_REDIRECT_URI}"
-        f"&scope=crm.objects.contacts.read%20crm.objects.contacts.write%20crm.schemas.contacts.read%20timeline"
+        f"&scope={scope_string}"
     )
     
     return {"authorization_url": auth_url}

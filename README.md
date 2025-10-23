@@ -67,7 +67,16 @@ cd ai-financial-advisor
 2. Create a developer account (free)
 3. Create a new app
 4. Set redirect URI: `http://localhost:8000/auth/hubspot/callback`
-5. Add required scopes: `crm.objects.contacts.read`, `crm.objects.contacts.write`, `crm.schemas.contacts.read`, `timeline`
+5. Add required scopes:
+   - `crm.objects.contacts.read`
+   - `crm.objects.contacts.write`
+   - `crm.schemas.contacts.read`
+   - `crm.objects.companies.read`
+   - `crm.objects.companies.write`
+   - `crm.objects.custom.read`
+   - `crm.objects.custom.write`
+   - `sales-email-read`
+   - `timeline`
 6. Copy Client ID and Client Secret
 
 ### 4. Set Up Backend
