@@ -19,8 +19,8 @@ class ToolExecutor:
     def __init__(self, db: AsyncSession, user: User):
         self.db = db
         self.user = user
-        self.gmail_service = GmailService(user)
-        self.calendar_service = CalendarService(user)
+        self.gmail_service = GmailService(user, db)
+        self.calendar_service = CalendarService(user, db)
         self.hubspot_service = HubspotService(user, db)
 
     def get_tools_definition(self) -> List[Dict[str, Any]]:

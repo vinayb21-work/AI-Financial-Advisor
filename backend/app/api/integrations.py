@@ -71,7 +71,7 @@ async def sync_gmail_background(user_id: str):
                 logger.error(f"User {user_id} not found")
                 return
 
-            gmail_service = GmailService(user)
+            gmail_service = GmailService(user, db)
             emails = await gmail_service.fetch_emails(max_results=100)
 
             rag_service = RAGService(db, user)
@@ -147,7 +147,7 @@ async def sync_calendar_background(user_id: str):
                 logger.error(f"User {user_id} not found")
                 return
 
-            calendar_service = CalendarService(user)
+            calendar_service = CalendarService(user, db)
             events = await calendar_service.fetch_events()
 
             rag_service = RAGService(db, user)

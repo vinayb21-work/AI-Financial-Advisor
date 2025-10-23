@@ -54,7 +54,7 @@ async def poll_gmail_for_user(db, user: User):
         logger.info(f"Checking Gmail for {user.email} since {since_datetime}")
         
         # Fetch new emails
-        gmail_service = GmailService(user)
+        gmail_service = GmailService(user, db)
         new_emails = await gmail_service.fetch_emails_since(since_datetime)
         
         if not new_emails:

@@ -110,7 +110,7 @@ async def process_calendar_webhook(channel_id: str, resource_id: str):
             logger.info(f"Syncing calendar for user {user.id} due to webhook")
             
             # Fetch latest calendar events
-            calendar_service = CalendarService(user)
+            calendar_service = CalendarService(user, db)
             events = await calendar_service.fetch_events()
             
             # Update RAG database

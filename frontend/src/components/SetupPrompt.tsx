@@ -12,9 +12,11 @@ export default function SetupPrompt() {
   const [syncingServices, setSyncingServices] = useState<Set<string>>(new Set())
   const previousSyncStatus = useRef<any>(null)
 
-  // Refetch user data if just connected Hubspot
+  // Refetch user data if just connected Hubspot or handle errors
   useEffect(() => {
     const hubspotParam = searchParams.get('hubspot')
+    const errorMessage = searchParams.get('message')
+    
     if (hubspotParam === 'connected') {
       // Refetch user data to get updated hubspot_connected status
       authApi.getCurrentUser().then((response) => {
@@ -22,6 +24,11 @@ export default function SetupPrompt() {
         // Clean up URL
         setSearchParams({})
       })
+    } else if (hubspotParam === 'error') {
+      // Show error message to user
+      alert(`HubSpot connection failed: ${errorMessage || 'Unknown error'}`)
+      // Clean up URL
+      setSearchParams({})
     }
   }, [searchParams, updateUser, setSearchParams])
 

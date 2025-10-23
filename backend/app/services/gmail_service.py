@@ -2,9 +2,10 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from email.mime.text import MIMEText
 import base64
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import logging
 from datetime import datetime
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
 from app.core.config import settings
@@ -13,9 +14,10 @@ logger = logging.getLogger(__name__)
 
 class GmailService:
     """Gmail API service"""
-    
-    def __init__(self, user: User):
+
+    def __init__(self, user: User, db: Optional[AsyncSession] = None):
         self.user = user
+        self.db = db
         self.credentials = Credentials(
             token=user.google_access_token,
             refresh_token=user.google_refresh_token,
@@ -24,6 +26,22 @@ class GmailService:
             client_secret=settings.GOOGLE_CLIENT_SECRET
         )
         self.service = build('gmail', 'v1', credentials=self.credentials)
+
+    async def _save_refreshed_credentials(self):
+        """Save refreshed credentials back to database"""
+        if not self.db:
+            return
+
+        # Check if token was refreshed
+        if self.credentials.token != self.user.google_access_token:
+            logger.info(f"Saving refreshed Google token for user: {self.user.email}")
+            self.user.google_access_token = self.credentials.token
+            if self.credentials.refresh_token:
+                self.user.google_refresh_token = self.credentials.refresh_token
+            if self.credentials.expiry:
+                self.user.google_token_expiry = self.credentials.expiry
+            await self.db.commit()
+            logger.info(f"Refreshed tokens saved for user: {self.user.email}")
     
     async def fetch_emails(self, max_results: int = 100) -> List[Dict[str, Any]]:
         """Fetch recent emails"""
@@ -34,6 +52,9 @@ class GmailService:
                 maxResults=max_results
             ).execute()
             
+            # Save refreshed tokens if they were updated
+            await self._save_refreshed_credentials()
+
             messages = results.get('messages', [])
             
             emails = []
@@ -98,6 +119,9 @@ class GmailService:
                 body={'raw': raw}
             ).execute()
             
+            # Save refreshed tokens if they were updated
+            await self._save_refreshed_credentials()
+            
             logger.info(f"Email sent to {to}, message ID: {result['id']}")
             return result['id']
             
@@ -120,9 +144,12 @@ class GmailService:
                 q=query,
                 maxResults=max_results
             ).execute()
-            
+
+            # Save refreshed tokens if they were updated
+            await self._save_refreshed_credentials()
+
             messages = results.get('messages', [])
-            
+
             emails = []
             for message in messages:
                 # Get full message details
@@ -177,6 +204,9 @@ class GmailService:
                 maxResults=max_results
             ).execute()
             
+            # Save refreshed tokens if they were updated
+            await self._save_refreshed_credentials()
+
             messages = results.get('messages', [])
             
             emails = []
