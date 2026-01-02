@@ -336,6 +336,3 @@ MIT
 For questions or issues, please create an issue in the GitHub repository.
 
 ---
-
-Built with ❤️ using AI assistance (as required by the challenge!)
-
